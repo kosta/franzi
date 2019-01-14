@@ -5,7 +5,7 @@ use std::io::Cursor;
 
 use bytes::{Buf, BufMut, Bytes};
 
-use crate::{FromBytes, FromBytesError, ToBuf};
+use crate::{FromBytes, FromBytesError, ToBytes};
 
 /// BOOLEAN	Represents a boolean value in a byte. Values 0 and 1 are used to represent false and true respectively. When reading a boolean value, any non-zero value is considered true.
 impl FromBytes for bool {
@@ -17,7 +17,7 @@ impl FromBytes for bool {
     }
 }
 
-impl ToBuf for bool {
+impl ToBytes for bool {
     fn len(&self) -> usize {
         size_of::<Self>()
     }
@@ -38,7 +38,7 @@ impl FromBytes for i8 {
     }
 }
 
-impl ToBuf for i8 {
+impl ToBytes for i8 {
     fn len(&self) -> usize {
         size_of::<Self>()
     }
@@ -59,7 +59,7 @@ impl FromBytes for i16 {
     }
 }
 
-impl ToBuf for i16 {
+impl ToBytes for i16 {
     fn len(&self) -> usize {
         size_of::<Self>()
     }
@@ -80,7 +80,7 @@ impl FromBytes for i32 {
     }
 }
 
-impl ToBuf for i32 {
+impl ToBytes for i32 {
     fn len(&self) -> usize {
         size_of::<Self>()
     }
@@ -100,7 +100,7 @@ impl FromBytes for i64 {
     }
 }
 
-impl ToBuf for i64 {
+impl ToBytes for i64 {
     fn len(&self) -> usize {
         size_of::<Self>()
     }
@@ -121,7 +121,7 @@ impl FromBytes for u32 {
     }
 }
 
-impl ToBuf for u32 {
+impl ToBytes for u32 {
     fn len(&self) -> usize {
         size_of::<Self>()
     }
@@ -154,7 +154,7 @@ impl FromBytes for KafkaString {
     }
 }
 
-impl ToBuf for KafkaString {
+impl ToBytes for KafkaString {
     fn len(&self) -> usize {
         size_of::<i16>() + self.0.len()
     }
@@ -182,7 +182,7 @@ impl FromBytes for Option<KafkaString> {
     }
 }
 
-impl ToBuf for Option<KafkaString> {
+impl ToBytes for Option<KafkaString> {
     fn len(&self) -> usize {
         match self {
             None => 1,
@@ -217,7 +217,7 @@ impl FromBytes for KafkaBytes {
     }
 }
 
-impl ToBuf for KafkaBytes {
+impl ToBytes for KafkaBytes {
     fn len(&self) -> usize {
         size_of::<i32>() + self.0.len()
     }
@@ -245,7 +245,7 @@ impl FromBytes for Option<KafkaBytes> {
     }
 }
 
-impl ToBuf for Option<KafkaBytes> {
+impl ToBytes for Option<KafkaBytes> {
     fn len(&self) -> usize {
         match self {
             None => 1,
@@ -286,9 +286,9 @@ impl<T: FromBytes> FromBytes for KafkaArray<T> {
     }
 }
 
-impl<T: ToBuf> ToBuf for KafkaArray<T> {
+impl<T: ToBytes> ToBytes for KafkaArray<T> {
     fn len(&self) -> usize {
-        size_of::<i32>() + self.0.iter().map(ToBuf::len).sum::<usize>()
+        size_of::<i32>() + self.0.iter().map(ToBytes::len).sum::<usize>()
     }
 
     fn write(&self, bytes: &mut BufMut) {
