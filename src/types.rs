@@ -1,7 +1,7 @@
 //! Kafka primitive types
 
-use std::mem::size_of;
 use std::io::Cursor;
+use std::mem::size_of;
 
 use bytes::{Buf, BufMut, Bytes};
 
@@ -18,12 +18,12 @@ impl FromBytes for bool {
 }
 
 impl ToBytes for bool {
-    fn len(&self) -> usize {
+    fn len_to_write(&self) -> usize {
         size_of::<Self>()
     }
 
     fn write(&self, bytes: &mut BufMut) {
-        bytes.put_u8(if *self {1} else {0});
+        bytes.put_u8(if *self { 1 } else { 0 });
     }
 }
 
@@ -39,7 +39,7 @@ impl FromBytes for i8 {
 }
 
 impl ToBytes for i8 {
-    fn len(&self) -> usize {
+    fn len_to_write(&self) -> usize {
         size_of::<Self>()
     }
 
@@ -60,7 +60,7 @@ impl FromBytes for i16 {
 }
 
 impl ToBytes for i16 {
-    fn len(&self) -> usize {
+    fn len_to_write(&self) -> usize {
         size_of::<Self>()
     }
 
@@ -81,7 +81,7 @@ impl FromBytes for i32 {
 }
 
 impl ToBytes for i32 {
-    fn len(&self) -> usize {
+    fn len_to_write(&self) -> usize {
         size_of::<Self>()
     }
 
@@ -101,7 +101,7 @@ impl FromBytes for i64 {
 }
 
 impl ToBytes for i64 {
-    fn len(&self) -> usize {
+    fn len_to_write(&self) -> usize {
         size_of::<Self>()
     }
 
@@ -122,7 +122,7 @@ impl FromBytes for u32 {
 }
 
 impl ToBytes for u32 {
-    fn len(&self) -> usize {
+    fn len_to_write(&self) -> usize {
         size_of::<Self>()
     }
 
@@ -155,7 +155,7 @@ impl FromBytes for KafkaString {
 }
 
 impl ToBytes for KafkaString {
-    fn len(&self) -> usize {
+    fn len_to_write(&self) -> usize {
         size_of::<i16>() + self.0.len()
     }
 
@@ -183,17 +183,17 @@ impl FromBytes for Option<KafkaString> {
 }
 
 impl ToBytes for Option<KafkaString> {
-    fn len(&self) -> usize {
+    fn len_to_write(&self) -> usize {
         match self {
             None => 1,
-            Some(s) => s.len(),
+            Some(s) => s.len_to_write(),
         }
     }
 
     fn write(&self, bytes: &mut BufMut) {
         match self {
             None => bytes.put_i16_be(-1),
-            Some(s) => s.write(bytes)
+            Some(s) => s.write(bytes),
         }
     }
 }
@@ -218,7 +218,7 @@ impl FromBytes for KafkaBytes {
 }
 
 impl ToBytes for KafkaBytes {
-    fn len(&self) -> usize {
+    fn len_to_write(&self) -> usize {
         size_of::<i32>() + self.0.len()
     }
 
@@ -246,17 +246,17 @@ impl FromBytes for Option<KafkaBytes> {
 }
 
 impl ToBytes for Option<KafkaBytes> {
-    fn len(&self) -> usize {
+    fn len_to_write(&self) -> usize {
         match self {
             None => 1,
-            Some(s) => s.len(),
+            Some(s) => s.len_to_write(),
         }
     }
 
     fn write(&self, bytes: &mut BufMut) {
         match self {
             None => bytes.put_i32_be(-1),
-            Some(s) => s.write(bytes)
+            Some(s) => s.write(bytes),
         }
     }
 }
@@ -268,9 +268,8 @@ impl ToBytes for Option<KafkaBytes> {
 /// ARRAY	Represents a sequence of objects of a given type T. Type T can be either a primitive type (e.g. STRING) or a structure. First, the length N is given as an INT32. Then N instances of type T follow. A null array is represented with a length of -1. In protocol documentation an array of T instances is referred to as [T].
 
 // TODO: Revisit whether it's ok (performance wise) to allocate a Vec here? A bit of an issue is the fact that we dont't know the length of this in advance without parsing the data
-pub struct KafkaArray<T>(pub Vec<T>);
 
-impl<T: FromBytes> FromBytes for KafkaArray<T> {
+impl<T: FromBytes> FromBytes for Vec<T> {
     fn read(bytes: &mut Cursor<Bytes>) -> Result<Self, FromBytesError> {
         let item_len = i32::read(bytes)?;
         if item_len < 0 {
@@ -282,18 +281,18 @@ impl<T: FromBytes> FromBytes for KafkaArray<T> {
         for _ in 0..item_len {
             vec.push(T::read(bytes)?);
         }
-        Ok(KafkaArray(vec))
+        Ok(vec)
     }
 }
 
-impl<T: ToBytes> ToBytes for KafkaArray<T> {
-    fn len(&self) -> usize {
-        size_of::<i32>() + self.0.iter().map(ToBytes::len).sum::<usize>()
+impl<T: ToBytes> ToBytes for Vec<T> {
+    fn len_to_write(&self) -> usize {
+        size_of::<i32>() + self.iter().map(ToBytes::len_to_write).sum::<usize>()
     }
 
     fn write(&self, bytes: &mut BufMut) {
         // TODO: Overflow check?
-        bytes.put_i32_be(self.0.len() as i32);
-        self.0.iter().for_each(|i| i.write(bytes));
+        bytes.put_i32_be(self.len() as i32);
+        self.iter().for_each(|i| i.write(bytes));
     }
 }
