@@ -1,13 +1,16 @@
 pub mod api_keys;
-pub mod errors;
-pub mod types;
-pub mod header;
 pub mod api_versions;
+pub mod errors;
+pub mod header;
+pub mod types;
 
 use bytes::{BufMut, Bytes};
 use std::io::Cursor;
 
+#[derive(Debug)]
 pub struct FromBytesError;
+
+#[derive(Debug)]
 pub struct ToBytesError;
 
 pub trait FromBytes: Sized {

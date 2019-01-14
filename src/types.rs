@@ -1,5 +1,6 @@
 //! Kafka primitive types
 
+use std::fmt;
 use std::io::Cursor;
 use std::mem::size_of;
 
@@ -140,6 +141,15 @@ impl ToBytes for u32 {
 /// STRING	Represents a sequence of characters. First the length N is given as an INT16. Then N bytes follow which are the UTF-8 encoding of the character sequence. Length must not be negative.
 pub struct KafkaString(pub Bytes);
 
+impl fmt::Debug for KafkaString {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match std::str::from_utf8(self.0.as_ref()) {
+            Ok(s) => write!(f, "KafkaString {{ utf8 {:?} }}", s),
+            Err(_) => write!(f, "KafkaString {{ bad {:?} }}", self.0.as_ref()),
+        }
+    }
+}
+
 impl FromBytes for KafkaString {
     fn read(bytes: &mut Cursor<Bytes>) -> Result<Self, FromBytesError> {
         let len = i16::read(bytes)?;
@@ -201,6 +211,7 @@ impl ToBytes for Option<KafkaString> {
 /// BYTES	Represents a raw sequence of bytes. First the length N is given as an INT32. Then N bytes follow.
 
 // TODO: Should this just be Bytes?! I'm scared :)
+#[derive(Debug)]
 pub struct KafkaBytes(pub Bytes);
 
 impl FromBytes for KafkaBytes {
