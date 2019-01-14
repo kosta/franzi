@@ -1,9 +1,9 @@
-
-use std::io::Cursor;
-use bytes::{Bytes, BufMut};
-use crate::{FromBytes, FromBytesError, ToBytes};
 use crate::types::KafkaString;
+use crate::{FromBytes, FromBytesError, ToBytes};
+use bytes::{BufMut, Bytes};
+use std::io::Cursor;
 
+#[derive(Debug)]
 pub struct RequestHeader {
     pub api_key: i16,
     pub api_version: i16,
@@ -25,10 +25,10 @@ impl FromBytes for RequestHeader {
 
 impl ToBytes for RequestHeader {
     fn len_to_write(&self) -> usize {
-        self.api_key.len_to_write() +
-        self.api_version.len_to_write() +
-        self.correlation_id.len_to_write() +
-        self.client_id.len_to_write()
+        self.api_key.len_to_write()
+            + self.api_version.len_to_write()
+            + self.correlation_id.len_to_write()
+            + self.client_id.len_to_write()
     }
 
     fn write(&self, bytes: &mut BufMut) {
@@ -39,6 +39,7 @@ impl ToBytes for RequestHeader {
     }
 }
 
+#[derive(Debug)]
 pub struct ResponseHeader {
     pub correlation_id: i32,
 }

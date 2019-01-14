@@ -1,6 +1,6 @@
-use std::io::Cursor;
-use bytes::{Bytes, BufMut};
 use crate::{FromBytes, FromBytesError, ToBytes};
+use bytes::{BufMut, Bytes};
+use std::io::Cursor;
 
 // TODO: Versioning concept?!
 
@@ -19,8 +19,7 @@ impl ToBytes for ApiVersionsRequest2 {
         0
     }
 
-    fn write(&self, _bytes: &mut BufMut) {
-    }
+    fn write(&self, _bytes: &mut BufMut) {}
 }
 
 ///ApiVersions Response (Version: 2) => error_code [api_versions] throttle_time_ms
@@ -46,7 +45,7 @@ pub struct ApiVersions2 {
 
 impl FromBytes for ApiVersionsResponse2 {
     fn read(bytes: &mut Cursor<Bytes>) -> Result<Self, FromBytesError> {
-        Ok(ApiVersionsResponse2{
+        Ok(ApiVersionsResponse2 {
             error_code: FromBytes::read(bytes)?,
             api_versions: FromBytes::read(bytes)?,
             throttle_time_ms: FromBytes::read(bytes)?,
@@ -56,7 +55,7 @@ impl FromBytes for ApiVersionsResponse2 {
 
 impl FromBytes for ApiVersions2 {
     fn read(bytes: &mut Cursor<Bytes>) -> Result<Self, FromBytesError> {
-        Ok(ApiVersions2{
+        Ok(ApiVersions2 {
             api_key: FromBytes::read(bytes)?,
             min_version: FromBytes::read(bytes)?,
             max_version: FromBytes::read(bytes)?,
@@ -66,9 +65,9 @@ impl FromBytes for ApiVersions2 {
 
 impl ToBytes for ApiVersionsResponse2 {
     fn len_to_write(&self) -> usize {
-        self.error_code.len_to_write() +
-        self.api_versions.len_to_write() +
-        self.throttle_time_ms.len_to_write()
+        self.error_code.len_to_write()
+            + self.api_versions.len_to_write()
+            + self.throttle_time_ms.len_to_write()
     }
 
     fn write(&self, bytes: &mut BufMut) {
@@ -80,9 +79,9 @@ impl ToBytes for ApiVersionsResponse2 {
 
 impl ToBytes for ApiVersions2 {
     fn len_to_write(&self) -> usize {
-        self.api_key.len_to_write() +
-        self.min_version.len_to_write() +
-        self.max_version.len_to_write()
+        self.api_key.len_to_write()
+            + self.min_version.len_to_write()
+            + self.max_version.len_to_write()
     }
 
     fn write(&self, bytes: &mut BufMut) {
@@ -91,5 +90,3 @@ impl ToBytes for ApiVersions2 {
         self.max_version.write(bytes);
     }
 }
-
-
