@@ -12,8 +12,8 @@ pub trait FromBytes : Sized {
     fn read(bytes: &mut Cursor<Bytes>) -> Result<Self, FromBytesError>;
 }
 
-// TODO: Is this IntoBuf?
-pub trait ToBuf {
+#[allow(clippy::len_without_is_empty)]
+pub trait ToBytes {
     fn len(&self) -> usize;
 
     // panics if there is not enough capacity in the Buffer
