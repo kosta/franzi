@@ -11,3 +11,7 @@
 ## Current status
 
 * In development, not usable
+
+## Kafka Resources
+
+* [Protocol Spec](http://kafka.apache.org/protocol.html)

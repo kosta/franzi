@@ -1,16 +1,17 @@
 //! Kafka primitive types
 
 use std::mem::size_of;
+use std::io::Cursor;
 
-use bytes::{Buf, BufMut};
+use bytes::{Buf, BufMut, Bytes};
 
-use crate::{FromBuf, FromBufError, ToBuf};
+use crate::{FromBytes, FromBytesError, ToBuf};
 
 /// BOOLEAN	Represents a boolean value in a byte. Values 0 and 1 are used to represent false and true respectively. When reading a boolean value, any non-zero value is considered true.
-impl FromBuf for bool {
-    fn read(bytes: &mut Buf) -> Result<Self, FromBufError> {
+impl FromBytes for bool {
+    fn read(bytes: &mut Cursor<Bytes>) -> Result<Self, FromBytesError> {
         if bytes.remaining() < size_of::<Self>() {
-            return Err(FromBufError);
+            return Err(FromBytesError);
         }
         Ok(bytes.get_u8() != 0)
     }
@@ -28,10 +29,10 @@ impl ToBuf for bool {
 
 /// INT8	Represents an integer between -2^7 and 2^7-1 inclusive.
 
-impl FromBuf for i8 {
-    fn read(bytes: &mut Buf) -> Result<Self, FromBufError> {
+impl FromBytes for i8 {
+    fn read(bytes: &mut Cursor<Bytes>) -> Result<Self, FromBytesError> {
         if bytes.remaining() < size_of::<Self>() {
-            return Err(FromBufError);
+            return Err(FromBytesError);
         }
         Ok(bytes.get_i8())
     }
@@ -49,10 +50,10 @@ impl ToBuf for i8 {
 
 /// INT16	Represents an integer between -2^15 and 2^15-1 inclusive. The values are encoded using two bytes in network byte order (big-endian).
 
-impl FromBuf for i16 {
-    fn read(bytes: &mut Buf) -> Result<Self, FromBufError> {
+impl FromBytes for i16 {
+    fn read(bytes: &mut Cursor<Bytes>) -> Result<Self, FromBytesError> {
         if bytes.remaining() < size_of::<Self>() {
-            return Err(FromBufError);
+            return Err(FromBytesError);
         }
         Ok(bytes.get_i16_be())
     }
@@ -70,10 +71,10 @@ impl ToBuf for i16 {
 
 /// INT32	Represents an integer between -2^31 and 2^31-1 inclusive. The values are encoded using four bytes in network byte order (big-endian).
 
-impl FromBuf for i32 {
-    fn read(bytes: &mut Buf) -> Result<Self, FromBufError> {
+impl FromBytes for i32 {
+    fn read(bytes: &mut Cursor<Bytes>) -> Result<Self, FromBytesError> {
         if bytes.remaining() < size_of::<Self>() {
-            return Err(FromBufError);
+            return Err(FromBytesError);
         }
         Ok(bytes.get_i32_be())
     }
@@ -90,10 +91,10 @@ impl ToBuf for i32 {
 }
 
 /// INT64	Represents an integer between -2^63 and 2^63-1 inclusive. The values are encoded using eight bytes in network byte order (big-endian).
-impl FromBuf for i64 {
-    fn read(bytes: &mut Buf) -> Result<Self, FromBufError> {
+impl FromBytes for i64 {
+    fn read(bytes: &mut Cursor<Bytes>) -> Result<Self, FromBytesError> {
         if bytes.remaining() < size_of::<Self>() {
-            return Err(FromBufError);
+            return Err(FromBytesError);
         }
         Ok(bytes.get_i64_be())
     }
@@ -111,10 +112,10 @@ impl ToBuf for i64 {
 
 /// UINT32	Represents an integer between 0 and 2^32-1 inclusive. The values are encoded using four bytes in network byte order (big-endian).
 
-impl FromBuf for u32 {
-    fn read(bytes: &mut Buf) -> Result<Self, FromBufError> {
+impl FromBytes for u32 {
+    fn read(bytes: &mut Cursor<Bytes>) -> Result<Self, FromBytesError> {
         if bytes.remaining() < size_of::<Self>() {
-            return Err(FromBufError);
+            return Err(FromBytesError);
         }
         Ok(bytes.get_u32_be())
     }
@@ -137,17 +138,162 @@ impl ToBuf for u32 {
 /// TODO: Implement VARLONG
 
 /// STRING	Represents a sequence of characters. First the length N is given as an INT16. Then N bytes follow which are the UTF-8 encoding of the character sequence. Length must not be negative.
+pub struct KafkaString(pub Bytes);
 
+impl FromBytes for KafkaString {
+    fn read(bytes: &mut Cursor<Bytes>) -> Result<Self, FromBytesError> {
+        let len = i16::read(bytes)?;
+        if len < 0 {
+            return Err(FromBytesError);
+        }
+        let len = len as usize;
+        if bytes.remaining() < len {
+            return Err(FromBytesError);
+        }
+        Ok(KafkaString(bytes.get_ref().slice_to(len)))
+    }
+}
+
+impl ToBuf for KafkaString {
+    fn len(&self) -> usize {
+        size_of::<i16>() + self.0.len()
+    }
+
+    fn write(&self, bytes: &mut BufMut) {
+        // TODO: Overflow check?
+        bytes.put_i16_be(self.0.len() as i16);
+        bytes.put_slice(self.0.as_ref());
+    }
+}
 
 /// NULLABLE_STRING	Represents a sequence of characters or null. For non-null strings, first the length N is given as an INT16. Then N bytes follow which are the UTF-8 encoding of the character sequence. A null value is encoded with length of -1 and there are no following bytes.
 
+impl FromBytes for Option<KafkaString> {
+    fn read(bytes: &mut Cursor<Bytes>) -> Result<Self, FromBytesError> {
+        let len = i16::read(bytes)?;
+        if len < 0 {
+            return Ok(None);
+        }
+        let len = len as usize;
+        if bytes.remaining() < len {
+            return Err(FromBytesError);
+        }
+        Ok(Some(KafkaString(bytes.get_ref().slice_to(len))))
+    }
+}
+
+impl ToBuf for Option<KafkaString> {
+    fn len(&self) -> usize {
+        match self {
+            None => 1,
+            Some(s) => s.len(),
+        }
+    }
+
+    fn write(&self, bytes: &mut BufMut) {
+        match self {
+            None => bytes.put_i16_be(-1),
+            Some(s) => s.write(bytes)
+        }
+    }
+}
+
 /// BYTES	Represents a raw sequence of bytes. First the length N is given as an INT32. Then N bytes follow.
+
+// TODO: Should this just be Bytes?! I'm scared :)
+pub struct KafkaBytes(pub Bytes);
+
+impl FromBytes for KafkaBytes {
+    fn read(bytes: &mut Cursor<Bytes>) -> Result<Self, FromBytesError> {
+        let len = i32::read(bytes)?;
+        if len < 0 {
+            return Err(FromBytesError);
+        }
+        let len = len as usize;
+        if bytes.remaining() < len {
+            return Err(FromBytesError);
+        }
+        Ok(KafkaBytes(bytes.get_ref().slice_to(len)))
+    }
+}
+
+impl ToBuf for KafkaBytes {
+    fn len(&self) -> usize {
+        size_of::<i32>() + self.0.len()
+    }
+
+    fn write(&self, bytes: &mut BufMut) {
+        // TODO: Overflow check?
+        bytes.put_i32_be(self.0.len() as i32);
+        bytes.put_slice(self.0.as_ref());
+    }
+}
 
 /// NULLABLE_BYTES	Represents a raw sequence of bytes or null. For non-null values, first the length N is given as an INT32. Then N bytes follow. A null value is encoded with length of -1 and there are no following bytes.
 
+impl FromBytes for Option<KafkaBytes> {
+    fn read(bytes: &mut Cursor<Bytes>) -> Result<Self, FromBytesError> {
+        let len = i32::read(bytes)?;
+        if len < 0 {
+            return Ok(None);
+        }
+        let len = len as usize;
+        if bytes.remaining() < len {
+            return Err(FromBytesError);
+        }
+        Ok(Some(KafkaBytes(bytes.get_ref().slice_to(len))))
+    }
+}
+
+impl ToBuf for Option<KafkaBytes> {
+    fn len(&self) -> usize {
+        match self {
+            None => 1,
+            Some(s) => s.len(),
+        }
+    }
+
+    fn write(&self, bytes: &mut BufMut) {
+        match self {
+            None => bytes.put_i32_be(-1),
+            Some(s) => s.write(bytes)
+        }
+    }
+}
+
 /// RECORDS	Represents a sequence of Kafka records as NULLABLE_BYTES. For a detailed description of records see Message Sets.
 
+// TODO ?!?
+
 /// ARRAY	Represents a sequence of objects of a given type T. Type T can be either a primitive type (e.g. STRING) or a structure. First, the length N is given as an INT32. Then N instances of type T follow. A null array is represented with a length of -1. In protocol documentation an array of T instances is referred to as [T].
-pub struct ARRAY { //<T: FromBuf + ToBuf> {
-    //TODO: Implement me!
+
+// TODO: Revisit whether it's ok (performance wise) to allocate a Vec here? A bit of an issue is the fact that we dont't know the length of this in advance without parsing the data
+pub struct KafkaArray<T>(pub Vec<T>);
+
+impl<T: FromBytes> FromBytes for KafkaArray<T> {
+    fn read(bytes: &mut Cursor<Bytes>) -> Result<Self, FromBytesError> {
+        let item_len = i32::read(bytes)?;
+        if item_len < 0 {
+            // TODO: What is a NULL array and how is it different from an empty array?
+            return Err(FromBytesError);
+        }
+        let item_len = item_len as usize;
+        let mut vec = Vec::with_capacity(item_len);
+        for _ in 0..item_len {
+            vec.push(T::read(bytes)?);
+        }
+        Ok(KafkaArray(vec))
+    }
+}
+
+impl<T: ToBuf> ToBuf for KafkaArray<T> {
+    fn len(&self) -> usize {
+        size_of::<i32>() + self.0.iter().map(ToBuf::len).sum::<usize>()
+    }
+
+    fn write(&self, bytes: &mut BufMut) {
+        // TODO: Overflow check?
+        bytes.put_i32_be(self.0.len() as i32);
+        self.0.iter().for_each(|i| i.write(bytes));
+    }
 }

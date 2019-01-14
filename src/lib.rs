@@ -1,12 +1,15 @@
 pub mod types;
 
-use bytes::{Buf, BufMut};
+use std::io::Cursor;
+use bytes::{BufMut, Bytes};
 
-pub struct FromBufError;
+pub struct FromBytesError;
 pub struct ToBytesError;
 
-pub trait FromBuf : Sized {
-    fn read(bytes: &mut Buf) -> Result<Self, FromBufError>;
+pub trait FromBytes : Sized {
+    // Cursor<Bytes> because that allows access to Bytes but also implements Buf
+    // Might be fixed in Bytes 0.5,see https://github.com/carllerche/bytes/issues/75
+    fn read(bytes: &mut Cursor<Bytes>) -> Result<Self, FromBytesError>;
 }
 
 // TODO: Is this IntoBuf?
