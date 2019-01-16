@@ -1,19 +1,19 @@
 use byteorder::ByteOrder;
 use bytes::BytesMut;
-use franz::api_versions::{ApiVersionsRequest2, ApiVersionsResponse2};
-use franz::header::{RequestHeader, ResponseHeader};
-use franz::types::KafkaString;
-use franz::{FromBytes, ToBytes};
+use franz_proto::api_versions::{ApiVersionsRequest2, ApiVersionsResponse2};
+use franz_proto::header::{RequestHeader, ResponseHeader};
+use franz_proto::types::KafkaString;
+use franz_proto::{FromBytes, ToBytes};
 use futures::future::Future;
 use std::net::SocketAddr;
-use std::time::{Duration, Instant};
+use std::time::{Instant};
 
 fn main() {
     let start = Instant::now();
     let fut = tokio::net::tcp::TcpStream::connect(&"127.0.0.1:9092".parse::<SocketAddr>().unwrap())
         .and_then(|tcp| {
             let req_header = RequestHeader {
-                api_key: franz::api_keys::ApiKey::ApiVersions as i16,
+                api_key: franz_proto::api_keys::ApiKey::ApiVersions as i16,
                 api_version: 2,
                 correlation_id: 42,
                 client_id: Some(KafkaString(String::from("franzi").into())),
