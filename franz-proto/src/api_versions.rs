@@ -1,4 +1,4 @@
-use crate::{FromBytes, FromBytesError, ToBytes};
+use franz_base::{FromBytes, FromBytesError, ToBytes};
 use bytes::{BufMut, Bytes};
 use std::io::Cursor;
 
