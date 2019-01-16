@@ -1,5 +1,5 @@
-use crate::types::KafkaString;
-use crate::{FromBytes, FromBytesError, ToBytes};
+use franz_base::types::KafkaString;
+use franz_base::{FromBytes, FromBytesError, ToBytes};
 use bytes::{BufMut, Bytes};
 use std::io::Cursor;
 
