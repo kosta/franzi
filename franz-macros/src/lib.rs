@@ -29,7 +29,7 @@ pub fn derive_from_bytes(input: proc_macro::TokenStream) -> proc_macro::TokenStr
     let expanded = quote! {
         // The generated impl.
         impl #impl_generics ::franz_base::FromBytes for #name #ty_generics #where_clause {
-            fn read(bytes: &mut ::std::io::Cursor<::bytes::Bytes>) -> Result<Self, FromBytesError> {
+            fn read(bytes: &mut ::std::io::Cursor<::bytes::Bytes>) -> Result<Self, ::franz_base::FromBytesError> {
                 Ok(#name
                     #imp
                 )
