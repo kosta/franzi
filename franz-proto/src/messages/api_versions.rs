@@ -1,12 +1,9 @@
-use bytes::{BufMut, Bytes};
-use franz_base::{FromBytes, FromBytesError, ToBytes};
-use std::io::Cursor;
 
 #[derive(Debug, Eq, PartialEq, FromBytes, ToBytes)]
 pub struct ApiVersionsRequest2;
 
 ///ApiVersions Response (Version: 2) => error_code [api_versions] throttle_time_ms
-#[derive(Debug, Eq, PartialEq, FromBytes)]
+#[derive(Debug, Eq, PartialEq, FromBytes, ToBytes)]
 pub struct ApiVersionsResponse2 {
     /// Response error code
     pub error_code: i16,
@@ -17,7 +14,7 @@ pub struct ApiVersionsResponse2 {
 }
 
 #[allow(non_camel_case_types)]
-#[derive(Debug, Eq, PartialEq)]
+#[derive(Debug, Eq, PartialEq, FromBytes, ToBytes)]
 pub struct ApiVersionsResponse2_Versions {
     /// API key
     pub api_key: i16,
@@ -54,43 +51,5 @@ mod tests {
             })),
             throttle_time_ms: 1073741831,
         }, b"\0{\0\0\0\x02\0\x04\0\0\0\t\0\t\xff\xfb\0\x03@\0\0\x07");
-    }
-}
-
-impl FromBytes for ApiVersionsResponse2_Versions {
-    fn read(bytes: &mut Cursor<Bytes>) -> Result<Self, FromBytesError> {
-        Ok(ApiVersionsResponse2_Versions {
-            api_key: FromBytes::read(bytes)?,
-            min_version: FromBytes::read(bytes)?,
-            max_version: FromBytes::read(bytes)?,
-        })
-    }
-}
-
-impl ToBytes for ApiVersionsResponse2 {
-    fn len_to_write(&self) -> usize {
-        self.error_code.len_to_write()
-            + self.api_versions.len_to_write()
-            + self.throttle_time_ms.len_to_write()
-    }
-
-    fn write(&self, bytes: &mut BufMut) {
-        self.error_code.write(bytes);
-        self.api_versions.write(bytes);
-        self.throttle_time_ms.write(bytes);
-    }
-}
-
-impl ToBytes for ApiVersionsResponse2_Versions {
-    fn len_to_write(&self) -> usize {
-        self.api_key.len_to_write()
-            + self.min_version.len_to_write()
-            + self.max_version.len_to_write()
-    }
-
-    fn write(&self, bytes: &mut BufMut) {
-        self.api_key.write(bytes);
-        self.min_version.write(bytes);
-        self.max_version.write(bytes);
     }
 }
