@@ -14,7 +14,7 @@ impl ToBytes for ApiVersionsRequest2 {
 }
 
 ///ApiVersions Response (Version: 2) => error_code [api_versions] throttle_time_ms
-#[derive(Debug, Eq, PartialEq)]
+#[derive(Debug, Eq, PartialEq, FromBytes)]
 pub struct ApiVersionsResponse2 {
     /// Response error code
     pub error_code: i16,
@@ -62,16 +62,6 @@ mod tests {
             })),
             throttle_time_ms: 1073741831,
         }, b"\0{\0\0\0\x02\0\x04\0\0\0\t\0\t\xff\xfb\0\x03@\0\0\x07");
-    }
-}
-
-impl FromBytes for ApiVersionsResponse2 {
-    fn read(bytes: &mut Cursor<Bytes>) -> Result<Self, FromBytesError> {
-        Ok(ApiVersionsResponse2 {
-            error_code: FromBytes::read(bytes)?,
-            api_versions: FromBytes::read(bytes)?,
-            throttle_time_ms: FromBytes::read(bytes)?,
-        })
     }
 }
 
