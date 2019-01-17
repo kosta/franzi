@@ -160,7 +160,10 @@ impl FromBytes for KafkaString {
         if bytes.remaining() < len {
             return Err(FromBytesError);
         }
-        Ok(KafkaString(bytes.get_ref().slice_to(len)))
+        let pos = bytes.position() as usize;
+        let s = KafkaString(bytes.get_ref().slice(pos, pos+len));
+        bytes.advance(len);
+        Ok(s)
     }
 }
 
@@ -188,7 +191,11 @@ impl FromBytes for Option<KafkaString> {
         if bytes.remaining() < len {
             return Err(FromBytesError);
         }
-        Ok(Some(KafkaString(bytes.get_ref().slice_to(len))))
+        let pos = bytes.position() as usize;
+        let s = KafkaString(bytes.get_ref().slice(pos, pos+len));
+        bytes.advance(len);
+        Ok(Some(s))
+
     }
 }
 
@@ -224,7 +231,10 @@ impl FromBytes for KafkaBytes {
         if bytes.remaining() < len {
             return Err(FromBytesError);
         }
-        Ok(KafkaBytes(bytes.get_ref().slice_to(len)))
+        let pos = bytes.position() as usize;
+        let s = KafkaBytes(bytes.get_ref().slice(pos, pos+len));
+        bytes.advance(len);
+        Ok(s)
     }
 }
 
@@ -252,7 +262,10 @@ impl FromBytes for Option<KafkaBytes> {
         if bytes.remaining() < len {
             return Err(FromBytesError);
         }
-        Ok(Some(KafkaBytes(bytes.get_ref().slice_to(len))))
+        let pos = bytes.position() as usize;
+        let s = KafkaBytes(bytes.get_ref().slice(pos, pos+len));
+        bytes.advance(len);
+        Ok(Some(s))
     }
 }
 
@@ -280,30 +293,38 @@ impl ToBytes for Option<KafkaBytes> {
 
 // TODO: Revisit whether it's ok (performance wise) to allocate a Vec here? A bit of an issue is the fact that we dont't know the length of this in advance without parsing the data
 
-impl<T: FromBytes> FromBytes for Vec<T> {
+impl<T: FromBytes> FromBytes for Option<Vec<T>> {
     fn read(bytes: &mut Cursor<Bytes>) -> Result<Self, FromBytesError> {
         let item_len = i32::read(bytes)?;
         if item_len < 0 {
-            // TODO: What is a NULL array and how is it different from an empty array?
-            return Err(FromBytesError);
+            return Ok(None);
         }
         let item_len = item_len as usize;
         let mut vec = Vec::with_capacity(item_len);
         for _ in 0..item_len {
             vec.push(T::read(bytes)?);
         }
-        Ok(vec)
+        Ok(Some(vec))
     }
 }
 
-impl<T: ToBytes> ToBytes for Vec<T> {
+impl<T: ToBytes> ToBytes for Option<Vec<T>> {
     fn len_to_write(&self) -> usize {
-        size_of::<i32>() + self.iter().map(ToBytes::len_to_write).sum::<usize>()
+        size_of::<i32>()
+            + match self {
+                None => 0,
+                Some(vec) => vec.iter().map(ToBytes::len_to_write).sum::<usize>(),
+            }
     }
 
     fn write(&self, bytes: &mut BufMut) {
         // TODO: Overflow check?
-        bytes.put_i32_be(self.len() as i32);
-        self.iter().for_each(|i| i.write(bytes));
+        match self {
+            None => bytes.put_i32_be(-1),
+            Some(vec) => {
+                bytes.put_i32_be(vec.len() as i32);
+                vec.iter().for_each(|i| i.write(bytes));
+            }
+        }
     }
 }

@@ -1,5 +1,5 @@
-use franz_base::{FromBytes, FromBytesError, ToBytes};
 use bytes::{BufMut, Bytes};
+use franz_base::{FromBytes, FromBytesError, ToBytes};
 use std::io::Cursor;
 
 // TODO: Versioning concept?!
@@ -28,7 +28,7 @@ pub struct ApiVersionsResponse2 {
     /// Response error code
     pub error_code: i16,
     /// API versions supported by the broker.
-    pub api_versions: Vec<ApiVersions2>,
+    pub api_versions: Option<Vec<ApiVersions2>>,
     /// Duration in milliseconds for which the request was throttled due to quota violation (Zero if the request did not violate any quota)
     pub throttle_time_ms: i32,
 }
