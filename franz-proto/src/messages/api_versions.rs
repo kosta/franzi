@@ -1,4 +1,3 @@
-
 #[derive(Debug, Eq, PartialEq, FromBytes, ToBytes)]
 pub struct ApiVersionsRequest2;
 
@@ -26,30 +25,36 @@ pub struct ApiVersionsResponse2_Versions {
 
 #[cfg(test)]
 mod tests {
-    use crate::tests::write_then_read_eq;
     use super::*;
+    use crate::tests::write_then_read_eq;
 
     #[test]
     #[allow(non_snake_case)]
     fn test_ApiVersionsRequest2() {
-        write_then_read_eq(ApiVersionsRequest2{}, b"");
+        write_then_read_eq(ApiVersionsRequest2 {}, b"");
     }
 
     #[test]
     #[allow(non_snake_case)]
     fn test_ApiVersionsResponse2() {
-        write_then_read_eq(ApiVersionsResponse2{
-            error_code: 123,
-            api_versions: Some(vec!(ApiVersionsResponse2_Versions{
-                api_key: 4,
-                min_version: 0,
-                max_version: 9,
-            }, ApiVersionsResponse2_Versions{
-                api_key: 9,
-                min_version: -5,
-                max_version: 3,
-            })),
-            throttle_time_ms: 1073741831,
-        }, b"\0{\0\0\0\x02\0\x04\0\0\0\t\0\t\xff\xfb\0\x03@\0\0\x07");
+        write_then_read_eq(
+            ApiVersionsResponse2 {
+                error_code: 123,
+                api_versions: Some(vec![
+                    ApiVersionsResponse2_Versions {
+                        api_key: 4,
+                        min_version: 0,
+                        max_version: 9,
+                    },
+                    ApiVersionsResponse2_Versions {
+                        api_key: 9,
+                        min_version: -5,
+                        max_version: 3,
+                    },
+                ]),
+                throttle_time_ms: 1073741831,
+            },
+            b"\0{\0\0\0\x02\0\x04\0\0\0\t\0\t\xff\xfb\0\x03@\0\0\x07",
+        );
     }
 }
