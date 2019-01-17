@@ -1,7 +1,13 @@
 [package]
-name = "franz-derive"
+name = "franz-macros"
 version = "0.1.0"
 authors = ["Kosta Welke <kw@trinatives.com>"]
 edition = "2018"
 
+[lib]
+proc-macro = true
+
 [dependencies]
+syn = "0.15"
+quote = "0.6.3"
+proc-macro2 = "0.4.25"

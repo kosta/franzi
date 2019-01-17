@@ -12,6 +12,15 @@
 
 * In development, not usable
 
+## Progress
+
+* ( ) Implement derive(FromBytes, ToBytes)
+* ( ) Implement message!()
+* ( ) Implement all messages
+* ( ) Protocol Versioning concept
+* ( ) Error handling
+* ( ) Write a client
+
 ## Kafka Resources
 
 * [A Guide To The Kafka Protocol](https://cwiki.apache.org/confluence/display/KAFKA/A+Guide+To+The+Kafka+Protocol)
