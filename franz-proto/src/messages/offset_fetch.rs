@@ -5,9 +5,6 @@
 //     partitions => partition
 //       partition => INT32
 
-
-
-
 // OffsetFetch Response (Version: 5) => throttle_time_ms [responses] error_code
 //   throttle_time_ms => INT32
 //   responses => topic [partition_responses]

@@ -2,9 +2,9 @@
 extern crate franz_macros;
 
 pub mod api_keys;
-pub mod messages;
 pub mod errors;
 pub mod header;
+pub mod messages;
 
 #[cfg(test)]
 mod tests {

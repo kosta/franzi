@@ -65,6 +65,4 @@ pub struct MetadataResponseBrokers7 {
     rack: Option<KafkaString>,
 }
 
-pub struct MetadataResponseTopics7 {
-
-}
+pub struct MetadataResponseTopics7 {}

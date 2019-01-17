@@ -139,6 +139,7 @@ impl ToBytes for u32 {
 /// TODO: Implement VARLONG
 
 /// STRING	Represents a sequence of characters. First the length N is given as an INT16. Then N bytes follow which are the UTF-8 encoding of the character sequence. Length must not be negative.
+#[derive(Eq, PartialEq)]
 pub struct KafkaString(pub Bytes);
 
 impl fmt::Debug for KafkaString {
@@ -218,7 +219,7 @@ impl ToBytes for Option<KafkaString> {
 /// BYTES	Represents a raw sequence of bytes. First the length N is given as an INT32. Then N bytes follow.
 
 // TODO: Should this just be Bytes?! I'm scared :)
-#[derive(Debug)]
+#[derive(Debug, Eq, PartialEq)]
 pub struct KafkaBytes(pub Bytes);
 
 impl FromBytes for KafkaBytes {

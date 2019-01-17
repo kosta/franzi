@@ -2,9 +2,9 @@ use byteorder::ByteOrder;
 use bytes::BytesMut;
 use franz_base::types::KafkaString;
 use franz_base::{FromBytes, ToBytes};
+use franz_proto::header::{RequestHeader, ResponseHeader};
 use franz_proto::messages::api_versions::{ApiVersionsRequest2, ApiVersionsResponse2};
 use franz_proto::messages::list_offsets::*;
-use franz_proto::header::{RequestHeader, ResponseHeader};
 use futures::future::Future;
 use std::net::SocketAddr;
 use std::time::Instant;
@@ -73,18 +73,14 @@ fn main() {
             let req = ListOffsetsRequest4 {
                 replica_id: -1,
                 isolation_level: 0,
-                topics: Some(vec![
-                    ListOffsetsRequest4Topic {
-                        topic: KafkaString(String::from("dcz_admitad_rawfeed").into()),
-                        partitions: Some(vec![
-                            ListOffsetsRequest4Partition {
-                                partition: 0,
-                                current_leader_epoch: -1, //?
-                                timestamp: 0, //?
-                            },
-                        ]),
-                    }
-                ]),
+                topics: Some(vec![ListOffsetsRequest4Topic {
+                    topic: KafkaString(String::from("dcz_admitad_rawfeed").into()),
+                    partitions: Some(vec![ListOffsetsRequest4Partition {
+                        partition: 0,
+                        current_leader_epoch: -1, //?
+                        timestamp: 0,             //?
+                    }]),
+                }]),
             };
             let len = req_header.len_to_write() + req.len_to_write();
             let mut buf = BytesMut::with_capacity(4 + len);
@@ -118,9 +114,7 @@ fn main() {
             // read response
             eprintln!("ListOffets response: {:?}", buf.get_ref().as_ref());
             let response = ListOffsetsResponse4::read(&mut buf).expect("listoffets response body");
-            eprintln!(
-                "Received ListOffets response: {:?}", response
-            );
+            eprintln!("Received ListOffets response: {:?}", response);
         })
         .map_err(|e| panic!("Error: {}", e));
     tokio::run(fut);
