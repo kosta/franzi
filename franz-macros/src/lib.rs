@@ -72,12 +72,14 @@ fn from_bytes_impl(data: &Data) -> TokenStream {
                     let recurse = fields.named.iter().map(|f| {
                         let name = &f.ident;
                         quote_spanned! {f.span()=>
-                            &self.#name: ::franz_base::FromBytes::read(bytes)?,
+                            #name: ::franz_base::FromBytes::read(bytes)?,
                         }
                     });
                     quote! {
                         {
-                            #(#recurse)*
+                            #(
+                                #recurse
+                            )*
                         }
                     }
                 }
