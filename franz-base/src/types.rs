@@ -153,18 +153,7 @@ impl fmt::Debug for KafkaString {
 
 impl FromBytes for KafkaString {
     fn read(bytes: &mut Cursor<Bytes>) -> Result<Self, FromBytesError> {
-        let len = i16::read(bytes)?;
-        if len < 0 {
-            return Err(FromBytesError);
-        }
-        let len = len as usize;
-        if bytes.remaining() < len {
-            return Err(FromBytesError);
-        }
-        let pos = bytes.position() as usize;
-        let s = KafkaString(bytes.get_ref().slice(pos, pos+len));
-        bytes.advance(len);
-        Ok(s)
+        <Option<KafkaString> as FromBytes>::read(bytes).and_then(|s| s.ok_or(FromBytesError))
     }
 }
 
@@ -218,42 +207,27 @@ impl ToBytes for Option<KafkaString> {
 
 /// BYTES	Represents a raw sequence of bytes. First the length N is given as an INT32. Then N bytes follow.
 
-// TODO: Should this just be Bytes?! I'm scared :)
-#[derive(Debug, Eq, PartialEq)]
-pub struct KafkaBytes(pub Bytes);
-
-impl FromBytes for KafkaBytes {
+impl FromBytes for Bytes {
     fn read(bytes: &mut Cursor<Bytes>) -> Result<Self, FromBytesError> {
-        let len = i32::read(bytes)?;
-        if len < 0 {
-            return Err(FromBytesError);
-        }
-        let len = len as usize;
-        if bytes.remaining() < len {
-            return Err(FromBytesError);
-        }
-        let pos = bytes.position() as usize;
-        let s = KafkaBytes(bytes.get_ref().slice(pos, pos+len));
-        bytes.advance(len);
-        Ok(s)
+        <Option<Bytes> as FromBytes>::read(bytes).and_then(|s| s.ok_or(FromBytesError))
     }
 }
 
-impl ToBytes for KafkaBytes {
+impl ToBytes for Bytes {
     fn len_to_write(&self) -> usize {
-        size_of::<i32>() + self.0.len()
+        size_of::<i32>() + self.len()
     }
 
     fn write(&self, bytes: &mut BufMut) {
         // TODO: Overflow check?
-        bytes.put_i32_be(self.0.len() as i32);
-        bytes.put_slice(self.0.as_ref());
+        bytes.put_i32_be(self.len() as i32);
+        bytes.put_slice(self.as_ref());
     }
 }
 
 /// NULLABLE_BYTES	Represents a raw sequence of bytes or null. For non-null values, first the length N is given as an INT32. Then N bytes follow. A null value is encoded with length of -1 and there are no following bytes.
 
-impl FromBytes for Option<KafkaBytes> {
+impl FromBytes for Option<Bytes> {
     fn read(bytes: &mut Cursor<Bytes>) -> Result<Self, FromBytesError> {
         let len = i32::read(bytes)?;
         if len < 0 {
@@ -264,13 +238,13 @@ impl FromBytes for Option<KafkaBytes> {
             return Err(FromBytesError);
         }
         let pos = bytes.position() as usize;
-        let s = KafkaBytes(bytes.get_ref().slice(pos, pos+len));
+        let s = bytes.get_ref().slice(pos, pos+len);
         bytes.advance(len);
         Ok(Some(s))
     }
 }
 
-impl ToBytes for Option<KafkaBytes> {
+impl ToBytes for Option<Bytes> {
     fn len_to_write(&self) -> usize {
         match self {
             None => 1,
@@ -288,7 +262,7 @@ impl ToBytes for Option<KafkaBytes> {
 
 /// RECORDS	Represents a sequence of Kafka records as NULLABLE_BYTES. For a detailed description of records see Message Sets.
 
-// TODO ?!?
+// TODO
 
 /// ARRAY	Represents a sequence of objects of a given type T. Type T can be either a primitive type (e.g. STRING) or a structure. First, the length N is given as an INT32. Then N instances of type T follow. A null array is represented with a length of -1. In protocol documentation an array of T instances is referred to as [T].
 
