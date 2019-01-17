@@ -2,16 +2,8 @@ use bytes::{BufMut, Bytes};
 use franz_base::{FromBytes, FromBytesError, ToBytes};
 use std::io::Cursor;
 
-#[derive(Debug, Eq, PartialEq, FromBytes)]
+#[derive(Debug, Eq, PartialEq, FromBytes, ToBytes)]
 pub struct ApiVersionsRequest2;
-
-impl ToBytes for ApiVersionsRequest2 {
-    fn len_to_write(&self) -> usize {
-        0
-    }
-
-    fn write(&self, _bytes: &mut BufMut) {}
-}
 
 ///ApiVersions Response (Version: 2) => error_code [api_versions] throttle_time_ms
 #[derive(Debug, Eq, PartialEq, FromBytes)]
@@ -24,6 +16,7 @@ pub struct ApiVersionsResponse2 {
     pub throttle_time_ms: i32,
 }
 
+#[allow(non_camel_case_types)]
 #[derive(Debug, Eq, PartialEq)]
 pub struct ApiVersionsResponse2_Versions {
     /// API key
@@ -38,7 +31,6 @@ pub struct ApiVersionsResponse2_Versions {
 mod tests {
     use crate::tests::write_then_read_eq;
     use super::*;
-    use bytes::BytesMut;
 
     #[test]
     #[allow(non_snake_case)]
