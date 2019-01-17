@@ -6,10 +6,18 @@ use quote::{quote, quote_spanned};
 use syn::spanned::Spanned;
 use syn::{parse_macro_input, parse_quote, Data, DeriveInput, Fields, GenericParam, Generics, Index};
 
+fn add_derives(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
+    let input: TokenStream = input.into();
+    let output = quote! {
+        #[derive(Debug, Eq, PartialEq)]
+        #input
+    };
+    output.into()
+}
+
 /// Unimplemented at the moment
 #[proc_macro]
 pub fn message(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
-    // let derive = "#derive(Debug, Eq, PartialEq, ToBytes, FromBytes)";
     let mut tokens: Vec<proc_macro::TokenTree> = input.into_iter().collect();
     assert_eq!(tokens.len(), 1);
     let input_str = match tokens.remove(0) {
@@ -34,7 +42,7 @@ pub fn message(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     ts.extend(d0);
     ts.extend(d1);
 
-    ts
+    add_derives(ts)
 }
 
 #[proc_macro_derive(FromBytes)]
