@@ -11,3 +11,7 @@ proc-macro = true
 syn = "0.15"
 quote = "0.6.3"
 proc-macro2 = "0.4.25"
+
+[dev-dependencies]
+franz-base = { path = "../franz-base" }
+bytes = "0.4.11"

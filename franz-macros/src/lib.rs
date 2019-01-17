@@ -1,6 +1,7 @@
 extern crate proc_macro;
 
-use proc_macro2::TokenStream;
+// use proc_macro::TokenTree;
+use proc_macro2::{TokenStream, Span};
 use quote::{quote, quote_spanned};
 use syn::spanned::Spanned;
 use syn::{parse_macro_input, parse_quote, Data, DeriveInput, Fields, GenericParam, Generics, Index};
@@ -8,7 +9,32 @@ use syn::{parse_macro_input, parse_quote, Data, DeriveInput, Fields, GenericPara
 /// Unimplemented at the moment
 #[proc_macro]
 pub fn message(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
-    unimplemented!()
+    // let derive = "#derive(Debug, Eq, PartialEq, ToBytes, FromBytes)";
+    let mut tokens: Vec<proc_macro::TokenTree> = input.into_iter().collect();
+    assert_eq!(tokens.len(), 1);
+    let input_str = match tokens.remove(0) {
+        proc_macro::TokenTree::Literal(s) => s,
+        _ => panic!("Expected exactly one string literal"),
+    };
+
+    let input_str = input_str.to_string();
+    let input_str = input_str[1..input_str.len()-1].to_string();
+
+    // eprintln!("input: {:?}", input_str);
+
+    let name = syn::Ident::new(&input_str, Span::call_site());
+
+    let expanded = quote! {
+        pub struct #name{}
+    };
+    let mut ts = proc_macro::TokenStream::from(expanded);
+
+    let d0 = derive_from_bytes(ts.clone());
+    let d1 = derive_to_bytes(ts.clone());
+    ts.extend(d0);
+    ts.extend(d1);
+
+    ts
 }
 
 #[proc_macro_derive(FromBytes)]
