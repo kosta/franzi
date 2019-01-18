@@ -3,7 +3,7 @@ use bytes::BytesMut;
 use franz_base::types::KafkaString;
 use franz_base::{FromBytes, ToBytes};
 use franz_proto::header::{RequestHeader, ResponseHeader};
-use franz_proto::messages::api_versions::{ApiVersionsRequest2, ApiVersionsResponse2};
+use franz_proto::messages::api_versions::{ApiVersionsRequestV2, ApiVersionsResponse2};
 use franz_proto::messages::list_offsets::*;
 use futures::future::Future;
 use std::net::SocketAddr;
@@ -20,7 +20,7 @@ fn main() {
                 client_id: Some(KafkaString(String::from("franzi").into())),
             };
             // eprintln!("Sending req_header {:?}", req_header);
-            let req = ApiVersionsRequest2 {};
+            let req = ApiVersionsRequestV2 {};
             let len = req_header.len_to_write() + req.len_to_write();
             let mut buf = BytesMut::with_capacity(4 + len);
 
