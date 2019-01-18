@@ -7,6 +7,7 @@ use syn::spanned::Spanned;
 use syn::{
     parse_macro_input, parse_quote, Data, DeriveInput, Fields, GenericParam, Generics, Index,
 };
+use itertools::Itertools;
 
 fn add_derives(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     let input: TokenStream = input.into();
@@ -23,6 +24,10 @@ fn add_derives(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
 /// TODO: Tell cargo not to run this as test :)
 // ```
 //     ApiVersions Request (Version: 2) =>
+// ```
+/// or
+// ```
+//     ApiVersions Response (Version: 2) => error_code [api_versions] throttle_time_ms
 // ```
 /// generates an empty ApiVersionsRequestV2 struct
 ///
@@ -50,7 +55,13 @@ pub fn kafka_message(input: proc_macro::TokenStream) -> proc_macro::TokenStream 
     eprintln!("typename: {:?}", typename);
     let typename = syn::Ident::new(&typename, Span::call_site());
 
+    assert_eq!("=>", split.next().unwrap());
+
+    let type_comment: TokenStream = syn::parse_str(&input_str.lines().map(|s| format!("/// {}", s)).join("\n")).expect("type_comments");
+    eprintln!("type_comment: {:?}", type_comment);
+
     let expanded = quote! {
+        #type_comment
         pub struct #typename{}
     };
     let mut ts = proc_macro::TokenStream::from(expanded);

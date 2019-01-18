@@ -5,6 +5,8 @@ use franz_macros::kafka_message;
 
 kafka_message!("ApiVersions Request (Version: 2) => ");
 
+kafka_message!("ApiVersions Response (Version: 2) => error_code [api_versions] throttle_time_ms");
+
 ///ApiVersions Response (Version: 2) => error_code [api_versions] throttle_time_ms
 #[derive(Debug, Eq, PartialEq, FromBytes, ToBytes)]
 pub struct ApiVersionsResponse2 {
