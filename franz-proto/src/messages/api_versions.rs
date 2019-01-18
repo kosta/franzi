@@ -1,5 +1,9 @@
-#[derive(Debug, Eq, PartialEq, FromBytes, ToBytes)]
-pub struct ApiVersionsRequest2;
+use franz_macros::kafka_message;
+
+// #[derive(Debug, Eq, PartialEq, FromBytes, ToBytes)]
+// pub struct ApiVersionsRequest2;
+
+kafka_message!("ApiVersions Request (Version: 2) => ");
 
 ///ApiVersions Response (Version: 2) => error_code [api_versions] throttle_time_ms
 #[derive(Debug, Eq, PartialEq, FromBytes, ToBytes)]
@@ -31,7 +35,7 @@ mod tests {
     #[test]
     #[allow(non_snake_case)]
     fn test_ApiVersionsRequest2() {
-        write_then_read_eq(ApiVersionsRequest2 {}, b"");
+        write_then_read_eq(ApiVersionsRequestV2 {}, b"");
     }
 
     #[test]

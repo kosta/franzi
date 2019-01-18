@@ -1,10 +1,12 @@
 extern crate proc_macro;
 
 // use proc_macro::TokenTree;
-use proc_macro2::{TokenStream, Span};
+use proc_macro2::{Span, TokenStream};
 use quote::{quote, quote_spanned};
 use syn::spanned::Spanned;
-use syn::{parse_macro_input, parse_quote, Data, DeriveInput, Fields, GenericParam, Generics, Index};
+use syn::{
+    parse_macro_input, parse_quote, Data, DeriveInput, Fields, GenericParam, Generics, Index,
+};
 
 fn add_derives(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     let input: TokenStream = input.into();
@@ -15,9 +17,17 @@ fn add_derives(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     output.into()
 }
 
-/// Unimplemented at the moment
+/// Generates rust structs, including #[derive(Debug, Eq, PartialEq, FromBytes, ToBytes)]
+/// for (potentially nested) [Kafka Protocol Message Spec](http://kafka.apache.org/protocol.html).
+/// Examples:
+/// TODO: Tell cargo not to run this as test :)
+// ```
+//     ApiVersions Request (Version: 2) =>
+// ```
+/// generates an empty ApiVersionsRequestV2 struct
+///
 #[proc_macro]
-pub fn message(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
+pub fn kafka_message(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     let mut tokens: Vec<proc_macro::TokenTree> = input.into_iter().collect();
     assert_eq!(tokens.len(), 1);
     let input_str = match tokens.remove(0) {
@@ -26,14 +36,22 @@ pub fn message(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     };
 
     let input_str = input_str.to_string();
-    let input_str = input_str[1..input_str.len()-1].to_string();
+    let input_str = input_str[1..input_str.len() - 1].to_string();
+    eprintln!("input: {:?}", input_str);
+    let mut split = input_str.split(' ');
 
-    // eprintln!("input: {:?}", input_str);
-
-    let name = syn::Ident::new(&input_str, Span::call_site());
+    let api_name = split.next().expect("api name");
+    let reqresp = split.next().expect("request or response");
+    assert_eq!("(Version:", split.next().expect("version literal"));
+    let version = split.next().expect("version number");
+    assert_eq!(b')', version.as_bytes()[version.len() - 1]);
+    let version = &version[0..version.len() - 1];
+    let typename = format!("{}{}V{}", api_name, reqresp, version);
+    eprintln!("typename: {:?}", typename);
+    let typename = syn::Ident::new(&typename, Span::call_site());
 
     let expanded = quote! {
-        pub struct #name{}
+        pub struct #typename{}
     };
     let mut ts = proc_macro::TokenStream::from(expanded);
 
@@ -79,7 +97,9 @@ pub fn derive_from_bytes(input: proc_macro::TokenStream) -> proc_macro::TokenStr
 fn add_trait_bounds(mut generics: Generics) -> Generics {
     for param in &mut generics.params {
         if let GenericParam::Type(ref mut type_param) = *param {
-            type_param.bounds.push(parse_quote!(::franz_base::FromBytes));
+            type_param
+                .bounds
+                .push(parse_quote!(::franz_base::FromBytes));
         }
     }
     generics

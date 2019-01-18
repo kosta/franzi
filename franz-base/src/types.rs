@@ -182,10 +182,9 @@ impl FromBytes for Option<KafkaString> {
             return Err(FromBytesError);
         }
         let pos = bytes.position() as usize;
-        let s = KafkaString(bytes.get_ref().slice(pos, pos+len));
+        let s = KafkaString(bytes.get_ref().slice(pos, pos + len));
         bytes.advance(len);
         Ok(Some(s))
-
     }
 }
 
@@ -238,7 +237,7 @@ impl FromBytes for Option<Bytes> {
             return Err(FromBytesError);
         }
         let pos = bytes.position() as usize;
-        let s = bytes.get_ref().slice(pos, pos+len);
+        let s = bytes.get_ref().slice(pos, pos + len);
         bytes.advance(len);
         Ok(Some(s))
     }
