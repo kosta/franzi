@@ -5,7 +5,13 @@ use franz_macros::kafka_message;
 
 kafka_message!("ApiVersions Request (Version: 2) => ");
 
-kafka_message!("ApiVersions Response (Version: 2) => error_code [api_versions] throttle_time_ms");
+kafka_message!("ApiVersions Response (Version: 2) => error_code [api_versions] throttle_time_ms
+  error_code => INT16
+  api_versions => api_key min_version max_version
+    api_key => INT16
+    min_version => INT16
+    max_version => INT16
+  throttle_time_ms => INT32");
 
 ///ApiVersions Response (Version: 2) => error_code [api_versions] throttle_time_ms
 #[derive(Debug, Eq, PartialEq, FromBytes, ToBytes)]
