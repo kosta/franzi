@@ -33,16 +33,17 @@ fn type_comment(typename: &str, input_str: &str) -> TokenStream {
 /// for (potentially nested) [Kafka Protocol Message Spec](http://kafka.apache.org/protocol.html).
 ///
 /// Example:
-///
+/// ```ignore
 ///     ApiVersions Request (Version: 2) =>
-///
+/// ```
 /// generates
-///
+/// ```
+/// # use ::franz_macros::{FromBytes, ToBytes};
 ///     #[derive(Debug, Eq, PartialEq, FromBytes, ToBytes)]
 ///     pub struct ApiVersionsRequestV2{}
-///
+/// ```
 /// Example:
-///
+/// ```ignore
 ///     ApiVersions Response (Version: 2) => error_code [api_versions] throttle_time_ms
 ///       error_code => INT16
 ///       api_versions => api_key min_version max_version
@@ -50,9 +51,10 @@ fn type_comment(typename: &str, input_str: &str) -> TokenStream {
 ///         min_version => INT16
 ///         max_version => INT16
 ///       throttle_time_ms => INT32
-///
+/// ```
 /// generates
-///
+/// ```
+/// # use ::franz_macros::{FromBytes, ToBytes};
 ///     #[derive(Debug, Eq, PartialEq, FromBytes, ToBytes)]
 ///     pub struct ApiVersionsResponseV2 {
 ///         pub error_code: i16,
@@ -62,12 +64,12 @@ fn type_comment(typename: &str, input_str: &str) -> TokenStream {
 ///
 ///     #[allow(non_camel_case_types)]
 ///     #[derive(Debug, Eq, PartialEq, FromBytes, ToBytes)]
-///     pub struct ApiVersionsResponse2_Versions {
+///     pub struct ApiVersionsResponseV2_Versions {
 ///         pub api_key: i16,
 ///         pub min_version: i16,
 ///         pub max_version: i16,
 ///     }
-///
+/// ```
 ///
 #[proc_macro]
 pub fn kafka_message(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
@@ -116,7 +118,9 @@ pub fn kafka_message(input: proc_macro::TokenStream) -> proc_macro::TokenStream 
 /// for each struct field.
 ///
 /// Example:
-///
+/// ```
+/// # use franz_base::types::KafkaString;
+/// # use ::franz_macros::{FromBytes};
 ///     #[derive(FromBytes)]
 ///     pub struct RequestHeader {
 ///         pub api_key: i16,
@@ -124,9 +128,9 @@ pub fn kafka_message(input: proc_macro::TokenStream) -> proc_macro::TokenStream 
 ///         pub correlation_id: i32,
 ///         pub client_id: Option<KafkaString>,
 ///     }
-///
+/// ```
 /// generates
-///
+/// ```ignore
 ///     impl ::franz_base::FromBytes for RequestHeader {
 ///         fn read(bytes: &mut ::std::io::Cursor<::bytes::Bytes>)
 ///             -> Result<Self, ::franz_base::FromBytesError> {
@@ -139,7 +143,7 @@ pub fn kafka_message(input: proc_macro::TokenStream) -> proc_macro::TokenStream 
 ///             })
 ///         }
 ///     }
-///
+/// ```
 /// (Pretty simple, except for the "fully qualified" types which add some noise)
 #[proc_macro_derive(FromBytes)]
 pub fn derive_from_bytes(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
@@ -190,12 +194,12 @@ fn from_bytes_impl(data: &Data) -> TokenStream {
             match data.fields {
                 Fields::Named(ref fields) => {
                     // Expands to an expression like
-                    //
+                    // ```ignore
                     // {
                     //     throttle_time_ms: FromBytes::read(bytes)?,
                     //     responses: FromBytes::read(bytes)?,
                     // }
-                    //
+                    // ```
                     // We take some care to use the span of each `syn::Field` as
                     // the span of the corresponding `read`
                     // call. This way if one of the field types does not
@@ -248,7 +252,9 @@ fn from_bytes_impl(data: &Data) -> TokenStream {
 /// for each struct field; the `write()` calls `write()` on each struct field.
 ///
 /// Example:
-///
+/// ```
+/// # use ::franz_base::types::KafkaString;
+/// # use ::franz_macros::ToBytes;
 ///     #[derive(ToBytes)]
 ///     pub struct RequestHeader {
 ///         pub api_key: i16,
@@ -256,9 +262,9 @@ fn from_bytes_impl(data: &Data) -> TokenStream {
 ///         pub correlation_id: i32,
 ///         pub client_id: Option<KafkaString>,
 ///     }
-///
+/// ```
 /// generates
-///
+/// ```ignore
 ///     impl ::franz_base::ToBytes for RequestHeader {
 ///
 ///         fn len_to_write(&self) -> usize {
@@ -277,7 +283,7 @@ fn from_bytes_impl(data: &Data) -> TokenStream {
 ///         }
 ///
 ///     }
-
+/// ```
 #[proc_macro_derive(ToBytes)]
 pub fn derive_to_bytes(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     // Parse the input tokens into a syntax tree.
