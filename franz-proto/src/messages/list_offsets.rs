@@ -1,7 +1,3 @@
-use bytes::{BufMut, Bytes};
-use franz_base::{FromBytes, FromBytesError, ToBytes};
-use std::io::Cursor;
-
 use franz_base::types::KafkaString;
 
 // ListOffsets Request (Version: 4) => replica_id isolation_level [topics]
