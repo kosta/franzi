@@ -7,7 +7,6 @@ use syn::spanned::Spanned;
 use syn::{
     parse_macro_input, parse_quote, Data, DeriveInput, Fields, GenericParam, Generics, Index,
 };
-use itertools::Itertools;
 
 fn add_derives(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     let input: TokenStream = input.into();
@@ -20,7 +19,7 @@ fn add_derives(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
 
 fn type_comment(typename: &str, input_str: &str) -> TokenStream{
     let typename = format!("{}\n", typename);
-    let inputs = input_str.lines().map(|s| format!("{}", s));
+    let inputs = input_str.lines().map(ToString::to_string);
     quote!{
         #[doc = #typename]
         #[doc = "Generated from [Kafka Message Spec](http://kafka.apache.org/protocol.html) by the [`kafka_message!`](../../../franz_macros/macro.kafka_message.html) macro.\n"]

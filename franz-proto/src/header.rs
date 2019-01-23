@@ -1,7 +1,4 @@
-use bytes::{BufMut, Bytes};
 use franz_base::types::KafkaString;
-use franz_base::{FromBytes, FromBytesError, ToBytes};
-use std::io::Cursor;
 
 #[derive(Debug, Eq, PartialEq, FromBytes, ToBytes)]
 pub struct RequestHeader {
