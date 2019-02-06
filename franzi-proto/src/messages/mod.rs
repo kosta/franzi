@@ -2,6 +2,7 @@
 // pub mod fetch;
 pub mod list_offsets;
 pub mod metadata;
+pub mod leader_and_isr;
 
 pub mod api_versions;
 pub mod find_coordinator;
