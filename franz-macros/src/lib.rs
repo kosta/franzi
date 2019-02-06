@@ -60,7 +60,9 @@ fn parse_field(field_name: &str) -> (bool, &str) {
 }
 
 fn to_rust_type(field2is_array: &HashMap<&str, bool>, name: &str, field_type: &str) -> String {
-    let is_array = field2is_array.get(name).unwrap_or_else(|| panic!("field2is_array[{:?}]", name));
+    let is_array = field2is_array
+        .get(name)
+        .unwrap_or_else(|| panic!("field2is_array[{:?}]", name));
     if *is_array {
         format!("Option<Vec<{}>>", field_type)
     } else {
@@ -142,6 +144,7 @@ pub fn kafka_message(input: proc_macro::TokenStream) -> proc_macro::TokenStream 
     let mut field2is_array = HashMap::new();
     let mut field2type = HashMap::new();
     let mut type2fields = HashMap::new();
+    let mut field2comment = HashMap::new();
     {
         let mut fields = Vec::new();
         for field_name in split {
@@ -153,61 +156,73 @@ pub fn kafka_message(input: proc_macro::TokenStream) -> proc_macro::TokenStream 
         type2fields.insert(typename_str.clone(), fields);
     }
 
+    let mut spec_lines = 0;
+    let mut parsing_comments = false;
     for line in input_lines {
         if line.trim().is_empty() {
             eprintln!("Got an empty line");
-            break;
-        }
-        // remaining lines are in the form of fieldname => type or typename => fields
-        let mut split = line.trim().split_whitespace();
-        let name = split.next().expect("non-first line field name").trim();
-        eprintln!("Got field or type name {:?}", name);
-        assert_eq!("=>", split.next().expect("non-first line arrow"));
-        let fields_or_type: Vec<_> = split.collect();
-        if fields_or_type.len() == 1 {
-            // single field
-            if let Some(primitive_type) = primitive_type(fields_or_type[0]) {
-                eprintln!("field {:?} has primitive type {:?}", name, primitive_type);
-                let rust_type = to_rust_type(&field2is_array, name, primitive_type);
-                field2type.insert(
-                    name.to_string(),
-                    rust_type);
+            parsing_comments = true;
+        } else if parsing_comments {
+            let mut field_and_comment = line.trim().splitn(2, char::is_whitespace);
+            let field = field_and_comment.next().expect("field name");
+            let comment = field_and_comment.next().expect("field comment");
+            field2comment.insert(field, comment);
+        } else {
+            spec_lines += 1;
+            // remaining lines are in the form of fieldname => type or typename => fields
+            let mut split = line.trim().split_whitespace();
+            let name = split.next().expect("non-first line field name").trim();
+            eprintln!("Got field or type name {:?}", name);
+            assert_eq!("=>", split.next().expect("non-first line arrow"));
+            let fields_or_type: Vec<_> = split.collect();
+            if fields_or_type.len() == 1 {
+                // single field
+                if let Some(primitive_type) = primitive_type(fields_or_type[0]) {
+                    eprintln!("field {:?} has primitive type {:?}", name, primitive_type);
+                    let rust_type = to_rust_type(&field2is_array, name, primitive_type);
+                    field2type.insert(name.to_string(), rust_type);
 
-                // done for this lines
-                continue;
+                    // done for this lines
+                    continue;
+                }
             }
-        }
 
-        let subtype_name = format!("{}_{}", typename_str, name);
-        // not a primitive type -> Must be a list of fields
-        let mut fields = Vec::new();
-        for field_name in fields_or_type {
-            let (is_arr, field_name) = parse_field(field_name);
-            field2is_array.insert(field_name, is_arr);
-            fields.push(field_name);
+            let subtype_name = format!("{}_{}", typename_str, name);
+            // not a primitive type -> Must be a list of fields
+            let mut fields = Vec::new();
+            for field_name in fields_or_type {
+                let (is_arr, field_name) = parse_field(field_name);
+                field2is_array.insert(field_name, is_arr);
+                fields.push(field_name);
+            }
+            type2fields.insert(subtype_name.clone(), fields);
+            field2type.insert(name.to_string(), subtype_name);
         }
-        type2fields.insert(subtype_name.clone(), fields);
-        field2type.insert(name.to_string(), subtype_name);
     }
-
-    // TODO: Parse (optional) comments?
 
     let mut field_lines: HashMap<String, Vec<TokenStream>> = HashMap::new();
     for (typ, fields) in &type2fields {
         let mut lines = Vec::new();
         for field in fields {
-            let field_type = &field2type.get(*field).unwrap_or_else(|| panic!("field2type[{:?}]", field));
+            let field_type = &field2type
+                .get(*field)
+                .unwrap_or_else(|| panic!("field2type[{:?}]", field));
             let field_type = to_rust_type(&field2is_array, field, field_type);
-            lines.push(syn::parse_str(&format!("pub {}: {},", field, field_type)).unwrap());
+            let comment = field2comment.get(*field).unwrap_or_else(|| panic!("field2comment[{:?}]", field));
+            lines.push(syn::parse_str(&format!("#[doc = {:?}] pub {}: {},", comment, field, field_type)).unwrap());
         }
         field_lines.insert(typ.clone(), lines);
     }
 
     let mut full_stream = proc_macro::TokenStream::new();
 
+    // only use the "spec" lines (not the comment lines) for the type comment
+    // otherwise, it's too ugly...
+    let spec_str = input_str.lines().take(spec_lines).collect::<Vec<_>>().join("\n");
+
     for (typename, lines) in field_lines {
         eprintln!("Writing TokenStream for type {:?}", typename);
-        let type_comment = type_comment(&typename, &input_str);
+        let type_comment = type_comment(&typename, &spec_str);
         let typ = Ident::new(&typename, Span::call_site());
         let expanded = quote! {
             #type_comment
