@@ -33,6 +33,7 @@ fn type_comment(typename: &str, input_str: &str) -> TokenStream {
 
 fn primitive_type(kafka_name: &str) -> Option<&'static str> {
     match kafka_name {
+        "BOOLEAN" => Some("bool"),
         "INT8" => Some("i8"),
         "INT16" => Some("i16"),
         "INT32" => Some("i32"),
