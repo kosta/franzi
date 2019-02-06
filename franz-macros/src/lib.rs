@@ -72,15 +72,30 @@ fn to_rust_type(field2is_array: &HashMap<&str, bool>, name: &str, field_type: &s
 /// Generates rust structs, including `#[derive(Debug, Eq, PartialEq, FromKafkaBytes, ToKafkaBytes)]`
 /// for (potentially nested) [Kafka Protocol Message Spec](http://kafka.apache.org/protocol.html).
 ///
+/// For kafka requests, the [`KafkaRequest`](../franz_base/trait.KafkaRequest.html) trait is implemented as well.
+///
 /// Example:
 /// ```ignore
 ///     ApiVersions Request (Version: 2) =>
 /// ```
 /// generates
 /// ```
-/// # use ::franz_macros::{FromKafkaBytes, ToKafkaBytes};
+/// # use ::franz_macros::{FromKafkaBytes, ToKafkaBytes, KafkaRequest};
 ///     #[derive(Debug, Eq, PartialEq, FromKafkaBytes, ToKafkaBytes)]
 ///     pub struct ApiVersionsRequestV2{}
+///
+///     impl ::franz_base::KafkaRequest for ApiVersionsRequestV2 {
+///
+///        type Response = ApiVersionsResponseV2;
+///
+///        fn api_key() -> i16 {
+///            ::franz_base::api_keys::ApiKey::ApiVersions as i16
+///        }
+///
+///        fn api_version() -> i16 {
+///            2i16
+///        }
+///    }
 /// ```
 /// Example:
 /// ```ignore
