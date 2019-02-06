@@ -14,7 +14,7 @@
 
 ## Progress
 
-* ( ) Implement derive(FromBytes, ToBytes)
+* ( ) Implement derive(FromKafkaBytes, ToKafkaBytes)
 * ( ) Implement message!()
 * ( ) Implement all messages
 * ( ) Protocol Versioning concept

@@ -1,6 +1,6 @@
 use franz_base::types::KafkaString;
 
-#[derive(Debug, Eq, PartialEq, FromBytes, ToBytes)]
+#[derive(Debug, Eq, PartialEq, FromKafkaBytes, ToKafkaBytes)]
 pub struct MetadataRequest7 {
     /// An array of topics to fetch metadata for. If the topics array is null fetch metadata for all topics.
     topics: Option<Vec<KafkaString>>,
@@ -30,7 +30,7 @@ pub struct MetadataRequest7 {
 //       isr => INT32
 //       offline_replicas => INT32
 
-// #[derive(Debug, Eq, PartialEq, FromBytes, ToBytes)]
+// #[derive(Debug, Eq, PartialEq, FromKafkaBytes, ToKafkaBytes)]
 // pub struct MetadataResponse7 {
 //     throttle_time_ms: i32,
 //     brokers: MetadataResponseBrokers7,
@@ -39,7 +39,7 @@ pub struct MetadataRequest7 {
 //     topic_metadata: MetadataResponseTopics7,
 // }
 
-// #[derive(Debug, Eq, PartialEq, FromBytes, ToBytes)]
+// #[derive(Debug, Eq, PartialEq, FromKafkaBytes, ToKafkaBytes)]
 // pub struct MetadataResponseBrokers7 {
 //     node_id: i32,
 //     host: KafkaString,
@@ -47,5 +47,5 @@ pub struct MetadataRequest7 {
 //     rack: Option<KafkaString>,
 // }
 
-// #[derive(Debug, Eq, PartialEq, FromBytes, ToBytes)]
+// #[derive(Debug, Eq, PartialEq, FromKafkaBytes, ToKafkaBytes)]
 // pub struct MetadataResponseTopics7 {}
