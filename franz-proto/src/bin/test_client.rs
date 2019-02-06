@@ -19,7 +19,7 @@ fn main() {
                 correlation_id: 42,
                 client_id: Some(KafkaString(String::from("franzi").into())),
             };
-            // eprintln!("Sending req_header {:?}", req_header);
+            // eprintln!("Sending req_header {:#?}", req_header);
             let req = ApiVersionsRequestV2 {};
             let len = req_header.len_to_write() + req.len_to_write();
             let mut buf = BytesMut::with_capacity(4 + len);
@@ -41,7 +41,7 @@ fn main() {
         .and_then(|(tcp, mut buf)| {
             // read i32 for size
             let len = byteorder::NetworkEndian::read_i32(buf.as_ref());
-            eprintln!("Received response of len {:?}", len);
+            eprintln!("Received response of len {:#?}", len);
             buf.resize(len as usize, 0);
             tokio::io::read_exact(tcp, buf)
         })
@@ -49,16 +49,16 @@ fn main() {
             let mut buf = std::io::Cursor::new(buf.freeze());
             // read header
             let header = ResponseHeader::read(&mut buf).expect("response header");
-            eprintln!("Received response header {:?}", header);
+            eprintln!("Received response header {:#?}", header);
             // read response
             let response = ApiVersionsResponse2::read(&mut buf).expect("response body");
-            eprintln!("Took {:?}", start.elapsed());
+            eprintln!("Took {:#?}", start.elapsed());
             eprintln!(
-                "Received response: error_code {:?}, throttle_time_ms: {:?}",
+                "Received response: error_code {:#?}, throttle_time_ms: {:#?}",
                 response.error_code, response.throttle_time_ms
             );
             for api_version in &response.api_versions {
-                eprintln!("{:?}", api_version);
+                eprintln!("{:#?}", api_version);
             }
             tcp
         })
@@ -69,7 +69,7 @@ fn main() {
                 correlation_id: 43,
                 client_id: Some(KafkaString(String::from("franzi").into())),
             };
-            // eprintln!("Sending req_header {:?}", req_header);
+            // eprintln!("Sending req_header {:#?}", req_header);
             let req = ListOffsetsRequestV4 {
                 replica_id: -1,
                 isolation_level: 0,
@@ -102,7 +102,7 @@ fn main() {
         .and_then(|(tcp, mut buf)| {
             // read i32 for size
             let len = byteorder::NetworkEndian::read_i32(buf.as_ref());
-            eprintln!("Received response of len {:?}", len);
+            eprintln!("Received response of len {:#?}", len);
             buf.resize(len as usize, 0);
             tokio::io::read_exact(tcp, buf)
         })
@@ -110,11 +110,11 @@ fn main() {
             let mut buf = std::io::Cursor::new(buf.freeze());
             // read header
             let header = ResponseHeader::read(&mut buf).expect("listoffets response header");
-            eprintln!("Received response header {:?}", header);
+            eprintln!("Received response header {:#?}", header);
             // read response
-            eprintln!("ListOffets response: {:?}", buf.get_ref().as_ref());
+            // eprintln!("ListOffets response: {:#?}", buf.get_ref().as_ref());
             let response = ListOffsetsResponse4::read(&mut buf).expect("listoffets response body");
-            eprintln!("Received ListOffets response: {:?}", response);
+            eprintln!("Received ListOffets response: {:#?}", response);
         })
         .map_err(|e| panic!("Error: {}", e));
     tokio::run(fut);
