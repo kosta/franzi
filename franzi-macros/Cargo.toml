@@ -1,5 +1,5 @@
 [package]
-name = "franz-macros"
+name = "franzi-macros"
 version = "0.1.0"
 authors = ["Kosta Welke <kw@trinatives.com>"]
 edition = "2018"
@@ -14,5 +14,5 @@ proc-macro2 = "0.4.25"
 lazy_static = "1.2.0"
 
 [dev-dependencies]
-franz-base = { path = "../franz-base" }
+franzi-base = { path = "../franzi-base" }
 bytes = "0.4.11"

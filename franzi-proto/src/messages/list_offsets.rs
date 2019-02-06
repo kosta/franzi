@@ -44,7 +44,7 @@ leader_epoch	The leader epoch");
 #[cfg(test)]
 mod tests {
     use super::*;
-    use ::franz_base::types::KafkaString;
+    use ::franzi_base::types::KafkaString;
     use crate::tests::write_then_read_eq;
 
     #[test]

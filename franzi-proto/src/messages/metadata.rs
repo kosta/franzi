@@ -1,4 +1,4 @@
-use franz_base::types::KafkaString;
+use franzi_base::types::KafkaString;
 
 #[derive(Debug, Eq, PartialEq, FromKafkaBytes, ToKafkaBytes)]
 pub struct MetadataRequest7 {

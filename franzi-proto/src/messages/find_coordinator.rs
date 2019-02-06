@@ -1,4 +1,4 @@
-use franz_macros::kafka_message;
+use franzi_macros::kafka_message;
 
 kafka_message!(
     "FindCoordinator Request (Version: 2) => coordinator_key coordinator_type
