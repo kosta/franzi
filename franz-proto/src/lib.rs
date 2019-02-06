@@ -1,7 +1,6 @@
 #[macro_use]
 extern crate franz_macros;
 
-pub mod api_keys;
 pub mod errors;
 pub mod header;
 pub mod messages;

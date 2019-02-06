@@ -1,7 +1,6 @@
 extern crate proc_macro;
 
-// use proc_macro::TokenTree;
-use proc_macro2::{Ident, Span, TokenStream, TokenTree};
+use proc_macro2::{Ident, Span, TokenStream};
 use quote::{quote, quote_spanned};
 use std::collections::HashMap;
 use syn::spanned::Spanned;
@@ -123,10 +122,10 @@ pub fn kafka_message(input: proc_macro::TokenStream) -> proc_macro::TokenStream 
 
     let input_str = input_str.to_string();
     let input_str = input_str[1..input_str.len() - 1].to_string();
-    eprintln!("input: {:?}", input_str);
+    // eprintln!("input: {:?}", input_str);
     let mut input_lines = input_str.trim().split('\n');
     let current_line = input_lines.next().expect("First line");
-    eprintln!("current_line: {:?}", current_line);
+    // eprintln!("current_line: {:?}", current_line);
     let mut split = current_line.split_whitespace();
 
     let api_name = split.next().expect("api name");
@@ -136,7 +135,7 @@ pub fn kafka_message(input: proc_macro::TokenStream) -> proc_macro::TokenStream 
     assert_eq!(b')', version.as_bytes()[version.len() - 1]);
     let version = &version[0..version.len() - 1];
     let typename_str = format!("{}{}V{}", api_name, reqresp, version);
-    eprintln!("typename: {:?}", typename_str);
+    // eprintln!("typename: {:?}", typename_str);
 
     assert_eq!("=>", split.next().unwrap());
 
@@ -152,15 +151,15 @@ pub fn kafka_message(input: proc_macro::TokenStream) -> proc_macro::TokenStream 
             field2is_array.insert(field_name, is_arr);
             fields.push(field_name);
         }
-        eprintln!("fields: {:?}", fields);
+        // eprintln!("fields: {:?}", fields);
         type2fields.insert(typename_str.clone(), fields);
     }
 
-    let mut spec_lines = 0;
+    let mut spec_lines = 1;
     let mut parsing_comments = false;
     for line in input_lines {
         if line.trim().is_empty() {
-            eprintln!("Got an empty line");
+            // eprintln!("Got an empty line");
             parsing_comments = true;
         } else if parsing_comments {
             let mut field_and_comment = line.trim().splitn(2, char::is_whitespace);
@@ -172,13 +171,13 @@ pub fn kafka_message(input: proc_macro::TokenStream) -> proc_macro::TokenStream 
             // remaining lines are in the form of fieldname => type or typename => fields
             let mut split = line.trim().split_whitespace();
             let name = split.next().expect("non-first line field name").trim();
-            eprintln!("Got field or type name {:?}", name);
+            // eprintln!("Got field or type name {:?}", name);
             assert_eq!("=>", split.next().expect("non-first line arrow"));
             let fields_or_type: Vec<_> = split.collect();
             if fields_or_type.len() == 1 {
                 // single field
                 if let Some(primitive_type) = primitive_type(fields_or_type[0]) {
-                    eprintln!("field {:?} has primitive type {:?}", name, primitive_type);
+                    // eprintln!("field {:?} has primitive type {:?}", name, primitive_type);
                     let rust_type = to_rust_type(&field2is_array, name, primitive_type);
                     field2type.insert(name.to_string(), rust_type);
 
@@ -221,7 +220,7 @@ pub fn kafka_message(input: proc_macro::TokenStream) -> proc_macro::TokenStream 
     let spec_str = input_str.lines().take(spec_lines).collect::<Vec<_>>().join("\n");
 
     for (typename, lines) in field_lines {
-        eprintln!("Writing TokenStream for type {:?}", typename);
+        // eprintln!("Writing TokenStream for type {:?}", typename);
         let type_comment = type_comment(&typename, &spec_str);
         let typ = Ident::new(&typename, Span::call_site());
         let expanded = quote! {
@@ -239,6 +238,29 @@ pub fn kafka_message(input: proc_macro::TokenStream) -> proc_macro::TokenStream 
         full_stream.extend(ts);
         full_stream.extend(d0);
         full_stream.extend(d1);
+    }
+
+    if reqresp == "Request" {
+        // eprintln!("Is Request Version {} api_name {:?}", version, api_name);
+        let typename = Ident::new(&typename_str, Span::call_site());
+        let response_type = Ident::new(&format!("{}ResponseV{}", api_name, version), Span::call_site());
+        let version: i16 = version.parse().expect("numberic version");
+        let api_key = Ident::new(api_name, Span::call_site());
+
+        let expanded = quote! {
+            impl ::franz_base::KafkaRequest for #typename {
+                type Response = #response_type;
+
+                fn api_key() -> i16 {
+                    ::franz_base::api_keys::ApiKey::#api_key as i16
+                }
+
+                fn api_version() -> i16 {
+                    #version
+                }
+            }
+        };
+        full_stream.extend(proc_macro::TokenStream::from(expanded));
     }
 
     full_stream
