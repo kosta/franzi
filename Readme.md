@@ -1,25 +1,43 @@
-# Franz, a pure-rust kafka protocol implementation
+# Franzi, a pure-rust [Kafka](https://kafka.apache.org) protocol implementation
 
 ## Goals
 
 * Pure rust Kafka client
-* Support for multiple Kafka protocol versions
+* Support for all Kafka protocol versions
 * Competitive performance; make this the fastest Kafka client if possible
 * Full API Coverage
-* Blocking and Non-blocking APIs (using futures)
+* Blocking and Non-blocking APIs (using futures/tokio)
+* Zero unsafe code (except in "well-known" dependencies, such as std, bytes, tokio, etc.)
 
 ## Current status
 
 * In development, not usable
+* Non-blocking futures/tokio-based API only
 
 ## Progress
 
-* ( ) Implement derive(FromKafkaBytes, ToKafkaBytes)
-* ( ) Implement message!()
+* (x) Implement derive(FromKafkaBytes, ToKafkaBytes)
+* (x) Implement kafka_message!()
 * ( ) Implement all messages
 * ( ) Protocol Versioning concept
+  * (x) Each Request knows its own version and its response type
 * ( ) Error handling
 * ( ) Write a client
+
+## Help Needed!
+
+There is some stuff that I probably won't come around to implement, as I won't personally use it in the
+forseeable futures:
+
+* Transactional consumer/producer ("stream")
+* Group-Offset-Commit coordination
+* ...?
+
+## Etymology
+
+`Franzi` is a bavarian nickname for the female version of the name Franz, the first name of Mr. Kafka.
+
+Also, when pronounced wrong, it sounds like 'frenzy', which I find a bit funny.
 
 ## Kafka Resources
 
