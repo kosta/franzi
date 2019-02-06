@@ -1,0 +1,13 @@
+[package]
+name = "franzi-client"
+version = "0.1.0"
+authors = ["Kosta Welke <kw@trinatives.com>"]
+edition = "2018"
+
+[dependencies]
+franzi-base = { path = "../franzi-base" }
+franzi-proto = { path = "../franzi-proto" }
+bytes = "0.4.11"
+tokio = "0.1"
+futures = "0.1"
+byteorder = "1.2.7"
