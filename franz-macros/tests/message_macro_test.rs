@@ -6,8 +6,8 @@
 
 // #[test]
 // fn test_message() {
-//     let f: Foo = franz_base::FromBytes::read(&mut Cursor::new(Bytes::from(&b""[..]))).unwrap();
-//     assert_eq!(franz_base::ToBytes::len_to_write(&f), 0);
+//     let f: Foo = franz_base::FromKafkaBytes::read(&mut Cursor::new(Bytes::from(&b""[..]))).unwrap();
+//     assert_eq!(franz_base::ToKafkaBytes::len_to_write(&f), 0);
 //     assert_eq!(format!("foo: {:?}", f), "foo: Foo");
 //     assert_eq!(f, Foo{});
 // }

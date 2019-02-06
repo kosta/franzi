@@ -69,7 +69,7 @@ fn to_rust_type(field2is_array: &HashMap<&str, bool>, name: &str, field_type: &s
     }
 }
 
-/// Generates rust structs, including `#[derive(Debug, Eq, PartialEq, FromBytes, ToBytes)]`
+/// Generates rust structs, including `#[derive(Debug, Eq, PartialEq, FromKafkaBytes, ToKafkaBytes)]`
 /// for (potentially nested) [Kafka Protocol Message Spec](http://kafka.apache.org/protocol.html).
 ///
 /// Example:
@@ -78,8 +78,8 @@ fn to_rust_type(field2is_array: &HashMap<&str, bool>, name: &str, field_type: &s
 /// ```
 /// generates
 /// ```
-/// # use ::franz_macros::{FromBytes, ToBytes};
-///     #[derive(Debug, Eq, PartialEq, FromBytes, ToBytes)]
+/// # use ::franz_macros::{FromKafkaBytes, ToKafkaBytes};
+///     #[derive(Debug, Eq, PartialEq, FromKafkaBytes, ToKafkaBytes)]
 ///     pub struct ApiVersionsRequestV2{}
 /// ```
 /// Example:
@@ -94,8 +94,8 @@ fn to_rust_type(field2is_array: &HashMap<&str, bool>, name: &str, field_type: &s
 /// ```
 /// generates
 /// ```
-/// # use ::franz_macros::{FromBytes, ToBytes};
-///     #[derive(Debug, Eq, PartialEq, FromBytes, ToBytes)]
+/// # use ::franz_macros::{FromKafkaBytes, ToKafkaBytes};
+///     #[derive(Debug, Eq, PartialEq, FromKafkaBytes, ToKafkaBytes)]
 ///     pub struct ApiVersionsResponseV2 {
 ///         pub error_code: i16,
 ///         pub api_versions: Option<Vec<ApiVersionsResponseV2_Versions>>,
@@ -103,7 +103,7 @@ fn to_rust_type(field2is_array: &HashMap<&str, bool>, name: &str, field_type: &s
 ///     }
 ///
 ///     #[allow(non_camel_case_types)]
-///     #[derive(Debug, Eq, PartialEq, FromBytes, ToBytes)]
+///     #[derive(Debug, Eq, PartialEq, FromKafkaBytes, ToKafkaBytes)]
 ///     pub struct ApiVersionsResponseV2_Versions {
 ///         pub api_key: i16,
 ///         pub min_version: i16,
@@ -266,14 +266,14 @@ pub fn kafka_message(input: proc_macro::TokenStream) -> proc_macro::TokenStream 
     full_stream
 }
 
-/// Derives a default [`FromBytes`](../franz_base/trait.FromBytes.html) implementation, whose `read()` method that calls `FromBytes::read()`
+/// Derives a default [`FromKafkaBytes`](../franz_base/trait.FromKafkaBytes.html) implementation, whose `read()` method that calls `FromKafkaBytes::read()`
 /// for each struct field.
 ///
 /// Example:
 /// ```
 /// # use franz_base::types::KafkaString;
-/// # use ::franz_macros::{FromBytes};
-///     #[derive(FromBytes)]
+/// # use ::franz_macros::{FromKafkaBytes};
+///     #[derive(FromKafkaBytes)]
 ///     pub struct RequestHeader {
 ///         pub api_key: i16,
 ///         pub api_version: i16,
@@ -283,21 +283,21 @@ pub fn kafka_message(input: proc_macro::TokenStream) -> proc_macro::TokenStream 
 /// ```
 /// generates
 /// ```ignore
-///     impl ::franz_base::FromBytes for RequestHeader {
+///     impl ::franz_base::FromKafkaBytes for RequestHeader {
 ///         fn read(bytes: &mut ::std::io::Cursor<::bytes::Bytes>)
 ///             -> Result<Self, ::franz_base::FromBytesError> {
 ///
 ///             Ok(RequestHeader{
-///                 api_key: ::franz_base::FromBytes::read(bytes)?,
-///                 api_version: ::franz_base::FromBytes::read(bytes)?,
-///                 correlation_id: ::franz_base::FromBytes::read(bytes)?,
-///                 client_id: ::franz_base::FromBytes::read(bytes)?,
+///                 api_key: ::franz_base::FromKafkaBytes::read(bytes)?,
+///                 api_version: ::franz_base::FromKafkaBytes::read(bytes)?,
+///                 correlation_id: ::franz_base::FromKafkaBytes::read(bytes)?,
+///                 client_id: ::franz_base::FromKafkaBytes::read(bytes)?,
 ///             })
 ///         }
 ///     }
 /// ```
 /// (Pretty simple, except for the "fully qualified" types which add some noise)
-#[proc_macro_derive(FromBytes)]
+#[proc_macro_derive(FromKafkaBytes)]
 pub fn derive_from_bytes(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     // Parse the input tokens into a syntax tree.
     let input = parse_macro_input!(input as DeriveInput);
@@ -314,7 +314,7 @@ pub fn derive_from_bytes(input: proc_macro::TokenStream) -> proc_macro::TokenStr
 
     let expanded = quote! {
         // The generated impl.
-        impl #impl_generics ::franz_base::FromBytes for #name #ty_generics #where_clause {
+        impl #impl_generics ::franz_base::FromKafkaBytes for #name #ty_generics #where_clause {
             fn read(bytes: &mut ::std::io::Cursor<::bytes::Bytes>) -> Result<Self, ::franz_base::FromBytesError> {
                 Ok(#name
                     #imp
@@ -333,7 +333,7 @@ fn add_trait_bounds(mut generics: Generics) -> Generics {
         if let GenericParam::Type(ref mut type_param) = *param {
             type_param
                 .bounds
-                .push(parse_quote!(::franz_base::FromBytes));
+                .push(parse_quote!(::franz_base::FromKafkaBytes));
         }
     }
     generics
@@ -348,19 +348,19 @@ fn from_bytes_impl(data: &Data) -> TokenStream {
                     // Expands to an expression like
                     // ```ignore
                     // {
-                    //     throttle_time_ms: FromBytes::read(bytes)?,
-                    //     responses: FromBytes::read(bytes)?,
+                    //     throttle_time_ms: FromKafkaBytes::read(bytes)?,
+                    //     responses: FromKafkaBytes::read(bytes)?,
                     // }
                     // ```
                     // We take some care to use the span of each `syn::Field` as
                     // the span of the corresponding `read`
                     // call. This way if one of the field types does not
-                    // implement `FromBytes` then the compiler's error message
+                    // implement `FromKafkaBytes` then the compiler's error message
                     // underlines which field it is. (Neat trick from HeapSize example)
                     let recurse = fields.named.iter().map(|f| {
                         let name = &f.ident;
                         quote_spanned! {f.span()=>
-                            #name: ::franz_base::FromBytes::read(bytes)?,
+                            #name: ::franz_base::FromKafkaBytes::read(bytes)?,
                         }
                     });
                     quote! {
@@ -375,13 +375,13 @@ fn from_bytes_impl(data: &Data) -> TokenStream {
                     // Expands to an expression like
                     //
                     // (
-                    //      FromBytes::read(bytes)?,
-                    //      FromBytes::read(bytes)?
+                    //      FromKafkaBytes::read(bytes)?,
+                    //      FromKafkaBytes::read(bytes)?
                     // )
                     let recurse = fields.unnamed.iter().enumerate().map(|(i, f)| {
                         let index = Index::from(i);
                         quote_spanned! {f.span()=>
-                            ::franz_base::FromBytes::read(&self.#index),
+                            ::franz_base::FromKafkaBytes::read(&self.#index),
                         }
                     });
                     quote! {
@@ -400,14 +400,14 @@ fn from_bytes_impl(data: &Data) -> TokenStream {
     }
 }
 
-/// Derives a default [`ToBytes`](../franz_base/trait.ToBytes.html) implementation. The `len_to_write()` method sums up `ToBytes::len_to_write()`
+/// Derives a default [`ToKafkaBytes`](../franz_base/trait.ToKafkaBytes.html) implementation. The `len_to_write()` method sums up `ToKafkaBytes::len_to_write()`
 /// for each struct field; the `write()` calls `write()` on each struct field.
 ///
 /// Example:
 /// ```
 /// # use ::franz_base::types::KafkaString;
-/// # use ::franz_macros::ToBytes;
-///     #[derive(ToBytes)]
+/// # use ::franz_macros::ToKafkaBytes;
+///     #[derive(ToKafkaBytes)]
 ///     pub struct RequestHeader {
 ///         pub api_key: i16,
 ///         pub api_version: i16,
@@ -417,26 +417,26 @@ fn from_bytes_impl(data: &Data) -> TokenStream {
 /// ```
 /// generates
 /// ```ignore
-///     impl ::franz_base::ToBytes for RequestHeader {
+///     impl ::franz_base::ToKafkaBytes for RequestHeader {
 ///
 ///         fn len_to_write(&self) -> usize {
 ///             0 +
-///             ::franz_base::ToBytes::len_to_write(&self.api_key) +
-///             ::franz_base::ToBytes::len_to_write(&self.api_version) +
-///             ::franz_base::ToBytes::len_to_write(&self.correlation_id) +
-///             ::franz_base::ToBytes::len_to_write(&self.client_id)
+///             ::franz_base::ToKafkaBytes::len_to_write(&self.api_key) +
+///             ::franz_base::ToKafkaBytes::len_to_write(&self.api_version) +
+///             ::franz_base::ToKafkaBytes::len_to_write(&self.correlation_id) +
+///             ::franz_base::ToKafkaBytes::len_to_write(&self.client_id)
 ///         }
 ///
 ///         fn write(&self, bytes: &mut ::bytes::BufMut) {
-///             ::franz_base::ToBytes::write(&self.api_key, bytes);
-///             ::franz_base::ToBytes::write(&self.api_version, bytes);
-///             ::franz_base::ToBytes::write(&self.correlation_id, bytes);
-///             ::franz_base::ToBytes::write(&self.client_id, bytes);
+///             ::franz_base::ToKafkaBytes::write(&self.api_key, bytes);
+///             ::franz_base::ToKafkaBytes::write(&self.api_version, bytes);
+///             ::franz_base::ToKafkaBytes::write(&self.correlation_id, bytes);
+///             ::franz_base::ToKafkaBytes::write(&self.client_id, bytes);
 ///         }
 ///
 ///     }
 /// ```
-#[proc_macro_derive(ToBytes)]
+#[proc_macro_derive(ToKafkaBytes)]
 pub fn derive_to_bytes(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     // Parse the input tokens into a syntax tree.
     let input = parse_macro_input!(input as DeriveInput);
@@ -454,7 +454,7 @@ pub fn derive_to_bytes(input: proc_macro::TokenStream) -> proc_macro::TokenStrea
 
     let expanded = quote! {
         // The generated impl.
-        impl #impl_generics ::franz_base::ToBytes for #name #ty_generics #where_clause {
+        impl #impl_generics ::franz_base::ToKafkaBytes for #name #ty_generics #where_clause {
                 fn len_to_write(&self) -> usize {
                     #len_impl
                 }
@@ -478,19 +478,19 @@ fn to_bytes_len_impl(data: &Data) -> TokenStream {
                     // Expands to an expression like
                     //
                     // {
-                    //     throttle_time_ms: FromBytes::read(bytes)?,
-                    //     responses: FromBytes::read(bytes)?,
+                    //     throttle_time_ms: FromKafkaBytes::read(bytes)?,
+                    //     responses: FromKafkaBytes::read(bytes)?,
                     // }
                     //
                     // We take some care to use the span of each `syn::Field` as
                     // the span of the corresponding `read`
                     // call. This way if one of the field types does not
-                    // implement `FromBytes` then the compiler's error message
+                    // implement `FromKafkaBytes` then the compiler's error message
                     // underlines which field it is. (Neat trick from HeapSize example)
                     let recurse = fields.named.iter().map(|f| {
                         let name = &f.ident;
                         quote_spanned! {f.span()=>
-                            ::franz_base::ToBytes::len_to_write(&self.#name)
+                            ::franz_base::ToKafkaBytes::len_to_write(&self.#name)
                         }
                     });
                     quote! {
@@ -501,13 +501,13 @@ fn to_bytes_len_impl(data: &Data) -> TokenStream {
                     // Expands to an expression like
                     //
                     // (
-                    //      FromBytes::read(bytes)?,
-                    //      FromBytes::read(bytes)?
+                    //      FromKafkaBytes::read(bytes)?,
+                    //      FromKafkaBytes::read(bytes)?
                     // )
                     let recurse = fields.unnamed.iter().enumerate().map(|(i, f)| {
                         let index = Index::from(i);
                         quote_spanned! {f.span()=>
-                            ::franz_base::FromBytes::read(&self.#index)
+                            ::franz_base::FromKafkaBytes::read(&self.#index)
                         }
                     });
                     quote! {
@@ -533,19 +533,19 @@ fn to_bytes_write_impl(data: &Data) -> TokenStream {
                     // Expands to an expression like
                     //
                     // {
-                    //     throttle_time_ms: FromBytes::read(bytes)?,
-                    //     responses: FromBytes::read(bytes)?,
+                    //     throttle_time_ms: FromKafkaBytes::read(bytes)?,
+                    //     responses: FromKafkaBytes::read(bytes)?,
                     // }
                     //
                     // We take some care to use the span of each `syn::Field` as
                     // the span of the corresponding `read`
                     // call. This way if one of the field types does not
-                    // implement `FromBytes` then the compiler's error message
+                    // implement `FromKafkaBytes` then the compiler's error message
                     // underlines which field it is. (Neat trick from HeapSize example)
                     let recurse = fields.named.iter().map(|f| {
                         let name = &f.ident;
                         quote_spanned! {f.span()=>
-                            ::franz_base::ToBytes::write(&self.#name, bytes);
+                            ::franz_base::ToKafkaBytes::write(&self.#name, bytes);
                         }
                     });
                     quote! {
@@ -558,13 +558,13 @@ fn to_bytes_write_impl(data: &Data) -> TokenStream {
                     // Expands to an expression like
                     //
                     // (
-                    //      FromBytes::read(bytes)?,
-                    //      FromBytes::read(bytes)?
+                    //      FromKafkaBytes::read(bytes)?,
+                    //      FromKafkaBytes::read(bytes)?
                     // )
                     let recurse = fields.unnamed.iter().enumerate().map(|(i, f)| {
                         let index = Index::from(i);
                         quote_spanned! {f.span()=>
-                            ::franz_base::ToBytes::write(&self.#index, bytes);
+                            ::franz_base::ToKafkaBytes::write(&self.#index, bytes);
                         }
                     });
                     quote! {

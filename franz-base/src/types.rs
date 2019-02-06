@@ -6,10 +6,10 @@ use std::mem::size_of;
 
 use bytes::{Buf, BufMut, Bytes};
 
-use crate::{FromBytes, FromBytesError, ToBytes};
+use crate::{FromKafkaBytes, FromBytesError, ToKafkaBytes};
 
 /// BOOLEAN	Represents a boolean value in a byte. Values 0 and 1 are used to represent false and true respectively. When reading a boolean value, any non-zero value is considered true.
-impl FromBytes for bool {
+impl FromKafkaBytes for bool {
     fn read(bytes: &mut Cursor<Bytes>) -> Result<Self, FromBytesError> {
         if bytes.remaining() < size_of::<Self>() {
             return Err(FromBytesError);
@@ -18,7 +18,7 @@ impl FromBytes for bool {
     }
 }
 
-impl ToBytes for bool {
+impl ToKafkaBytes for bool {
     fn len_to_write(&self) -> usize {
         size_of::<Self>()
     }
@@ -30,7 +30,7 @@ impl ToBytes for bool {
 
 /// INT8	Represents an integer between -2^7 and 2^7-1 inclusive.
 
-impl FromBytes for i8 {
+impl FromKafkaBytes for i8 {
     fn read(bytes: &mut Cursor<Bytes>) -> Result<Self, FromBytesError> {
         if bytes.remaining() < size_of::<Self>() {
             return Err(FromBytesError);
@@ -39,7 +39,7 @@ impl FromBytes for i8 {
     }
 }
 
-impl ToBytes for i8 {
+impl ToKafkaBytes for i8 {
     fn len_to_write(&self) -> usize {
         size_of::<Self>()
     }
@@ -51,7 +51,7 @@ impl ToBytes for i8 {
 
 /// INT16	Represents an integer between -2^15 and 2^15-1 inclusive. The values are encoded using two bytes in network byte order (big-endian).
 
-impl FromBytes for i16 {
+impl FromKafkaBytes for i16 {
     fn read(bytes: &mut Cursor<Bytes>) -> Result<Self, FromBytesError> {
         if bytes.remaining() < size_of::<Self>() {
             return Err(FromBytesError);
@@ -60,7 +60,7 @@ impl FromBytes for i16 {
     }
 }
 
-impl ToBytes for i16 {
+impl ToKafkaBytes for i16 {
     fn len_to_write(&self) -> usize {
         size_of::<Self>()
     }
@@ -72,7 +72,7 @@ impl ToBytes for i16 {
 
 /// INT32	Represents an integer between -2^31 and 2^31-1 inclusive. The values are encoded using four bytes in network byte order (big-endian).
 
-impl FromBytes for i32 {
+impl FromKafkaBytes for i32 {
     fn read(bytes: &mut Cursor<Bytes>) -> Result<Self, FromBytesError> {
         if bytes.remaining() < size_of::<Self>() {
             return Err(FromBytesError);
@@ -81,7 +81,7 @@ impl FromBytes for i32 {
     }
 }
 
-impl ToBytes for i32 {
+impl ToKafkaBytes for i32 {
     fn len_to_write(&self) -> usize {
         size_of::<Self>()
     }
@@ -92,7 +92,7 @@ impl ToBytes for i32 {
 }
 
 /// INT64	Represents an integer between -2^63 and 2^63-1 inclusive. The values are encoded using eight bytes in network byte order (big-endian).
-impl FromBytes for i64 {
+impl FromKafkaBytes for i64 {
     fn read(bytes: &mut Cursor<Bytes>) -> Result<Self, FromBytesError> {
         if bytes.remaining() < size_of::<Self>() {
             return Err(FromBytesError);
@@ -101,7 +101,7 @@ impl FromBytes for i64 {
     }
 }
 
-impl ToBytes for i64 {
+impl ToKafkaBytes for i64 {
     fn len_to_write(&self) -> usize {
         size_of::<Self>()
     }
@@ -113,7 +113,7 @@ impl ToBytes for i64 {
 
 /// UINT32	Represents an integer between 0 and 2^32-1 inclusive. The values are encoded using four bytes in network byte order (big-endian).
 
-impl FromBytes for u32 {
+impl FromKafkaBytes for u32 {
     fn read(bytes: &mut Cursor<Bytes>) -> Result<Self, FromBytesError> {
         if bytes.remaining() < size_of::<Self>() {
             return Err(FromBytesError);
@@ -122,7 +122,7 @@ impl FromBytes for u32 {
     }
 }
 
-impl ToBytes for u32 {
+impl ToKafkaBytes for u32 {
     fn len_to_write(&self) -> usize {
         size_of::<Self>()
     }
@@ -157,13 +157,13 @@ impl fmt::Debug for KafkaString {
     }
 }
 
-impl FromBytes for KafkaString {
+impl FromKafkaBytes for KafkaString {
     fn read(bytes: &mut Cursor<Bytes>) -> Result<Self, FromBytesError> {
-        <Option<KafkaString> as FromBytes>::read(bytes).and_then(|s| s.ok_or(FromBytesError))
+        <Option<KafkaString> as FromKafkaBytes>::read(bytes).and_then(|s| s.ok_or(FromBytesError))
     }
 }
 
-impl ToBytes for KafkaString {
+impl ToKafkaBytes for KafkaString {
     fn len_to_write(&self) -> usize {
         size_of::<i16>() + self.0.len()
     }
@@ -177,7 +177,7 @@ impl ToBytes for KafkaString {
 
 /// NULLABLE_STRING	Represents a sequence of characters or null. For non-null strings, first the length N is given as an INT16. Then N bytes follow which are the UTF-8 encoding of the character sequence. A null value is encoded with length of -1 and there are no following bytes.
 
-impl FromBytes for Option<KafkaString> {
+impl FromKafkaBytes for Option<KafkaString> {
     fn read(bytes: &mut Cursor<Bytes>) -> Result<Self, FromBytesError> {
         let len = i16::read(bytes)?;
         if len < 0 {
@@ -194,7 +194,7 @@ impl FromBytes for Option<KafkaString> {
     }
 }
 
-impl ToBytes for Option<KafkaString> {
+impl ToKafkaBytes for Option<KafkaString> {
     fn len_to_write(&self) -> usize {
         match self {
             None => 1,
@@ -212,13 +212,13 @@ impl ToBytes for Option<KafkaString> {
 
 /// BYTES	Represents a raw sequence of bytes. First the length N is given as an INT32. Then N bytes follow.
 
-impl FromBytes for Bytes {
+impl FromKafkaBytes for Bytes {
     fn read(bytes: &mut Cursor<Bytes>) -> Result<Self, FromBytesError> {
-        <Option<Bytes> as FromBytes>::read(bytes).and_then(|s| s.ok_or(FromBytesError))
+        <Option<Bytes> as FromKafkaBytes>::read(bytes).and_then(|s| s.ok_or(FromBytesError))
     }
 }
 
-impl ToBytes for Bytes {
+impl ToKafkaBytes for Bytes {
     fn len_to_write(&self) -> usize {
         size_of::<i32>() + self.len()
     }
@@ -232,7 +232,7 @@ impl ToBytes for Bytes {
 
 /// NULLABLE_BYTES	Represents a raw sequence of bytes or null. For non-null values, first the length N is given as an INT32. Then N bytes follow. A null value is encoded with length of -1 and there are no following bytes.
 
-impl FromBytes for Option<Bytes> {
+impl FromKafkaBytes for Option<Bytes> {
     fn read(bytes: &mut Cursor<Bytes>) -> Result<Self, FromBytesError> {
         let len = i32::read(bytes)?;
         if len < 0 {
@@ -249,7 +249,7 @@ impl FromBytes for Option<Bytes> {
     }
 }
 
-impl ToBytes for Option<Bytes> {
+impl ToKafkaBytes for Option<Bytes> {
     fn len_to_write(&self) -> usize {
         match self {
             None => 1,
@@ -274,7 +274,7 @@ pub struct Records {}
 
 // TODO: Revisit whether it's ok (performance wise) to allocate a Vec here? A bit of an issue is the fact that we dont't know the length of this in advance without parsing the data
 
-impl<T: FromBytes> FromBytes for Option<Vec<T>> {
+impl<T: FromKafkaBytes> FromKafkaBytes for Option<Vec<T>> {
     fn read(bytes: &mut Cursor<Bytes>) -> Result<Self, FromBytesError> {
         let item_len = i32::read(bytes)?;
         if item_len < 0 {
@@ -289,12 +289,12 @@ impl<T: FromBytes> FromBytes for Option<Vec<T>> {
     }
 }
 
-impl<T: ToBytes> ToBytes for Option<Vec<T>> {
+impl<T: ToKafkaBytes> ToKafkaBytes for Option<Vec<T>> {
     fn len_to_write(&self) -> usize {
         size_of::<i32>()
             + match self {
                 None => 0,
-                Some(vec) => vec.iter().map(ToBytes::len_to_write).sum::<usize>(),
+                Some(vec) => vec.iter().map(ToKafkaBytes::len_to_write).sum::<usize>(),
             }
     }
 

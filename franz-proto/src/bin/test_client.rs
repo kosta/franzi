@@ -1,7 +1,7 @@
 use byteorder::ByteOrder;
 use bytes::BytesMut;
 use franz_base::types::KafkaString;
-use franz_base::{FromBytes, ToBytes};
+use franz_base::{FromKafkaBytes, ToKafkaBytes};
 use franz_proto::header::{RequestHeader, ResponseHeader};
 use franz_proto::messages::api_versions::{ApiVersionsRequestV2, ApiVersionsResponseV2};
 use franz_proto::messages::list_offsets::*;
@@ -25,7 +25,7 @@ fn main() {
             let mut buf = BytesMut::with_capacity(4 + len);
 
             // write size (i32)
-            ToBytes::write(&(len as i32), &mut buf);
+            ToKafkaBytes::write(&(len as i32), &mut buf);
             // write header
             req_header.write(&mut buf);
             // write request
@@ -86,7 +86,7 @@ fn main() {
             let mut buf = BytesMut::with_capacity(4 + len);
 
             // write size (i32)
-            ToBytes::write(&(len as i32), &mut buf);
+            ToKafkaBytes::write(&(len as i32), &mut buf);
             // write header
             req_header.write(&mut buf);
             // write request
