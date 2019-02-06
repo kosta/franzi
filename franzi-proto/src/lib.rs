@@ -1,5 +1,5 @@
 #[macro_use]
-extern crate franz_macros;
+extern crate franzi_macros;
 
 pub mod errors;
 pub mod header;
@@ -8,7 +8,7 @@ pub mod messages;
 #[cfg(test)]
 mod tests {
     use bytes::BytesMut;
-    use franz_base::{FromKafkaBytes, ToKafkaBytes};
+    use franzi_base::{FromKafkaBytes, ToKafkaBytes};
     use std::fmt::Debug;
     use std::io::Cursor;
 

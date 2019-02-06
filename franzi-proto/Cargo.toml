@@ -1,12 +1,12 @@
 [package]
-name = "franz-proto"
+name = "franzi-proto"
 version = "0.1.0"
 authors = ["Kosta Welke <kw@trinatives.com>"]
 edition = "2018"
 
 [dependencies]
-franz-base = { path = "../franz-base" }
-franz-macros = { path = "../franz-macros" }
+franzi-base = { path = "../franzi-base" }
+franzi-macros = { path = "../franzi-macros" }
 tokio = "0.1"
 futures = "0.1"
 bytes = "0.4.11"
