@@ -1,8 +1,9 @@
 extern crate proc_macro;
 
 // use proc_macro::TokenTree;
-use proc_macro2::{Span, TokenStream};
+use proc_macro2::{Ident, Span, TokenStream, TokenTree};
 use quote::{quote, quote_spanned};
+use std::collections::HashMap;
 use syn::spanned::Spanned;
 use syn::{
     parse_macro_input, parse_quote, Data, DeriveInput, Fields, GenericParam, Generics, Index,
@@ -26,6 +27,44 @@ fn type_comment(typename: &str, input_str: &str) -> TokenStream {
         #[doc = "```ignore"]
         #(#[doc = #inputs])*
         #[doc = "```\n"]
+    }
+}
+
+fn primitive_type(kafka_name: &str) -> Option<&'static str> {
+    match kafka_name {
+        "INT8" => Some("i8"),
+        "INT16" => Some("i16"),
+        "INT32" => Some("i32"),
+        "INT64" => Some("i64"),
+        "UINT32" => Some("u32"),
+        "VARINT" => Some("::franz_base::types::vi32"),
+        "VARLONG" => Some("::franz_base::types::vi64"),
+        "STRING" => Some("::franz_base::types::KafkaString"),
+        "NULLABLE_STRING" => Some("Option<::franz_base::types::KafkaString>"),
+        "BYTES" => Some("::bytes::Bytes"),
+        "NULLABLE_BYTES" => Some("Option<::bytes::Bytes>"),
+        "RECORDS" => Some("::franz_base::types::Records"),
+        "ARRAY" => Some("Option<Vec>"),
+        _ => None,
+    }
+}
+
+fn parse_field(field_name: &str) -> (bool, &str) {
+    if field_name.starts_with('[') {
+        assert!(field_name.ends_with(']'));
+        let field_name = &field_name[1..field_name.len() - 1];
+        (true, field_name)
+    } else {
+        (false, field_name)
+    }
+}
+
+fn to_rust_type(field2is_array: &HashMap<&str, bool>, name: &str, field_type: &str) -> String {
+    let is_array = field2is_array.get(name).unwrap_or_else(|| panic!("field2is_array[{:?}]", name));
+    if *is_array {
+        format!("Option<Vec<{}>>", field_type)
+    } else {
+        field_type.to_string()
     }
 }
 
@@ -83,7 +122,10 @@ pub fn kafka_message(input: proc_macro::TokenStream) -> proc_macro::TokenStream 
     let input_str = input_str.to_string();
     let input_str = input_str[1..input_str.len() - 1].to_string();
     eprintln!("input: {:?}", input_str);
-    let mut split = input_str.split(' ');
+    let mut input_lines = input_str.trim().split('\n');
+    let current_line = input_lines.next().expect("First line");
+    eprintln!("current_line: {:?}", current_line);
+    let mut split = current_line.split_whitespace();
 
     let api_name = split.next().expect("api name");
     let reqresp = split.next().expect("request or response");
@@ -93,25 +135,97 @@ pub fn kafka_message(input: proc_macro::TokenStream) -> proc_macro::TokenStream 
     let version = &version[0..version.len() - 1];
     let typename_str = format!("{}{}V{}", api_name, reqresp, version);
     eprintln!("typename: {:?}", typename_str);
-    let typename = syn::Ident::new(&typename_str, Span::call_site());
 
     assert_eq!("=>", split.next().unwrap());
 
-    let type_comment = type_comment(&typename_str, &input_str);
-    // eprintln!("type_comment: {:?}", type_comment);
+    // remaining items on line are field names
+    let mut field2is_array = HashMap::new();
+    let mut field2type = HashMap::new();
+    let mut type2fields = HashMap::new();
+    {
+        let mut fields = Vec::new();
+        for field_name in split {
+            let (is_arr, field_name) = parse_field(field_name);
+            field2is_array.insert(field_name, is_arr);
+            fields.push(field_name);
+        }
+        eprintln!("fields: {:?}", fields);
+        type2fields.insert(typename_str.clone(), fields);
+    }
 
-    let expanded = quote! {
-        #type_comment
-        pub struct #typename{}
-    };
-    let mut ts = proc_macro::TokenStream::from(expanded);
+    for line in input_lines {
+        if line.trim().is_empty() {
+            eprintln!("Got an empty line");
+            break;
+        }
+        // remaining lines are in the form of fieldname => type or typename => fields
+        let mut split = line.trim().split_whitespace();
+        let name = split.next().expect("non-first line field name").trim();
+        eprintln!("Got field or type name {:?}", name);
+        assert_eq!("=>", split.next().expect("non-first line arrow"));
+        let fields_or_type: Vec<_> = split.collect();
+        if fields_or_type.len() == 1 {
+            // single field
+            if let Some(primitive_type) = primitive_type(fields_or_type[0]) {
+                eprintln!("field {:?} has primitive type {:?}", name, primitive_type);
+                let rust_type = to_rust_type(&field2is_array, name, primitive_type);
+                field2type.insert(
+                    name.to_string(),
+                    rust_type);
 
-    let d0 = derive_from_bytes(ts.clone());
-    let d1 = derive_to_bytes(ts.clone());
-    ts.extend(d0);
-    ts.extend(d1);
+                // done for this lines
+                continue;
+            }
+        }
 
-    add_derives(ts)
+        let subtype_name = format!("{}_{}", typename_str, name);
+        // not a primitive type -> Must be a list of fields
+        let mut fields = Vec::new();
+        for field_name in fields_or_type {
+            let (is_arr, field_name) = parse_field(field_name);
+            field2is_array.insert(field_name, is_arr);
+            fields.push(field_name);
+        }
+        type2fields.insert(subtype_name.clone(), fields);
+        field2type.insert(name.to_string(), subtype_name);
+    }
+
+    // TODO: Parse (optional) comments?
+
+    let mut field_lines: HashMap<String, Vec<TokenStream>> = HashMap::new();
+    for (typ, fields) in &type2fields {
+        let mut lines = Vec::new();
+        for field in fields {
+            let field_type = &field2type.get(*field).unwrap_or_else(|| panic!("field2type[{:?}]", field));
+            lines.push(syn::parse_str(&format!("pub {}: {},", field, field_type)).unwrap());
+        }
+        field_lines.insert(typ.clone(), lines);
+    }
+
+    let mut full_stream = proc_macro::TokenStream::new();
+
+    for (typename, lines) in field_lines {
+        eprintln!("Writing TokenStream for type {:?}", typename);
+        let type_comment = type_comment(&typename, &input_str);
+        let typ = Ident::new(&typename, Span::call_site());
+        let expanded = quote! {
+            #type_comment
+            pub struct #typ{
+                #(#lines)*
+            }
+        };
+
+        let ts = proc_macro::TokenStream::from(expanded);
+        let d0 = derive_from_bytes(ts.clone());
+        let d1 = derive_to_bytes(ts.clone());
+        let ts = add_derives(ts);
+
+        full_stream.extend(ts);
+        full_stream.extend(d0);
+        full_stream.extend(d1);
+    }
+
+    full_stream
 }
 
 /// Derives a default [`FromBytes`](../franz_base/trait.FromBytes.html) implementation, whose `read()` method that calls `FromBytes::read()`

@@ -70,12 +70,12 @@ fn main() {
                 client_id: Some(KafkaString(String::from("franzi").into())),
             };
             // eprintln!("Sending req_header {:?}", req_header);
-            let req = ListOffsetsRequest4 {
+            let req = ListOffsetsRequestV4 {
                 replica_id: -1,
                 isolation_level: 0,
-                topics: Some(vec![ListOffsetsRequest4Topic {
+                topics: Some(vec![ListOffsetsRequestV4_topics {
                     topic: KafkaString(String::from("dcz_admitad_rawfeed").into()),
-                    partitions: Some(vec![ListOffsetsRequest4Partition {
+                    partitions: Some(vec![ListOffsetsRequestV4_partitions {
                         partition: 0,
                         current_leader_epoch: -1, //?
                         timestamp: 0,             //?
