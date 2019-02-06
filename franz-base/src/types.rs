@@ -135,8 +135,14 @@ impl ToBytes for u32 {
 /// VARINT	Represents an integer between -2^31 and 2^31-1 inclusive. Encoding follows the variable-length zig-zag encoding from Google Protocol Buffers.
 /// TODO: Implement VARINT
 
+#[allow(non_camel_case_types)]
+pub struct vi32(i32);
+
 /// VARLONG	Represents an integer between -2^63 and 2^63-1 inclusive. Encoding follows the variable-length zig-zag encoding from Google Protocol Buffers.
 /// TODO: Implement VARLONG
+
+#[allow(non_camel_case_types)]
+pub struct vi64(i64);
 
 /// STRING	Represents a sequence of characters. First the length N is given as an INT16. Then N bytes follow which are the UTF-8 encoding of the character sequence. Length must not be negative.
 #[derive(Eq, PartialEq)]
@@ -262,6 +268,7 @@ impl ToBytes for Option<Bytes> {
 /// RECORDS	Represents a sequence of Kafka records as NULLABLE_BYTES. For a detailed description of records see Message Sets.
 
 // TODO
+pub struct Records {}
 
 /// ARRAY	Represents a sequence of objects of a given type T. Type T can be either a primitive type (e.g. STRING) or a structure. First, the length N is given as an INT32. Then N instances of type T follow. A null array is represented with a length of -1. In protocol documentation an array of T instances is referred to as [T].
 
