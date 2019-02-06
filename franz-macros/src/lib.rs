@@ -197,6 +197,7 @@ pub fn kafka_message(input: proc_macro::TokenStream) -> proc_macro::TokenStream 
         let mut lines = Vec::new();
         for field in fields {
             let field_type = &field2type.get(*field).unwrap_or_else(|| panic!("field2type[{:?}]", field));
+            let field_type = to_rust_type(&field2is_array, field, field_type);
             lines.push(syn::parse_str(&format!("pub {}: {},", field, field_type)).unwrap());
         }
         field_lines.insert(typ.clone(), lines);
