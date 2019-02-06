@@ -3,3 +3,4 @@ pub mod find_coordinator;
 pub mod list_offsets;
 pub mod metadata;
 pub mod offset_fetch;
+pub mod delete_records;

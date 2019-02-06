@@ -18,6 +18,7 @@
 
 * (x) Implement derive(FromKafkaBytes, ToKafkaBytes)
 * (x) Implement kafka_message!()
+* ( ) Implement varint, Record, MessageSet
 * ( ) Implement all messages
 * ( ) Protocol Versioning concept
   * (x) Each Request knows its own version and its response type
