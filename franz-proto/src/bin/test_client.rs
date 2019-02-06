@@ -3,7 +3,7 @@ use bytes::BytesMut;
 use franz_base::types::KafkaString;
 use franz_base::{FromBytes, ToBytes};
 use franz_proto::header::{RequestHeader, ResponseHeader};
-use franz_proto::messages::api_versions::{ApiVersionsRequestV2, ApiVersionsResponse2};
+use franz_proto::messages::api_versions::{ApiVersionsRequestV2, ApiVersionsResponseV2};
 use franz_proto::messages::list_offsets::*;
 use futures::future::Future;
 use std::net::SocketAddr;
@@ -14,7 +14,7 @@ fn main() {
     let fut = tokio::net::tcp::TcpStream::connect(&"127.0.0.1:9092".parse::<SocketAddr>().unwrap())
         .and_then(|tcp| {
             let req_header = RequestHeader {
-                api_key: franz_proto::api_keys::ApiKey::ApiVersions as i16,
+                api_key: franz_base::api_keys::ApiKey::ApiVersions as i16,
                 api_version: 2,
                 correlation_id: 42,
                 client_id: Some(KafkaString(String::from("franzi").into())),
@@ -51,7 +51,7 @@ fn main() {
             let header = ResponseHeader::read(&mut buf).expect("response header");
             eprintln!("Received response header {:#?}", header);
             // read response
-            let response = ApiVersionsResponse2::read(&mut buf).expect("response body");
+            let response = ApiVersionsResponseV2::read(&mut buf).expect("response body");
             eprintln!("Took {:#?}", start.elapsed());
             eprintln!(
                 "Received response: error_code {:#?}, throttle_time_ms: {:#?}",
@@ -64,7 +64,7 @@ fn main() {
         })
         .and_then(|tcp| {
             let req_header = RequestHeader {
-                api_key: franz_proto::api_keys::ApiKey::ListOffsets as i16,
+                api_key: franz_base::api_keys::ApiKey::ListOffsets as i16,
                 api_version: 4,
                 correlation_id: 43,
                 client_id: Some(KafkaString(String::from("franzi").into())),
@@ -113,7 +113,7 @@ fn main() {
             eprintln!("Received response header {:#?}", header);
             // read response
             // eprintln!("ListOffets response: {:#?}", buf.get_ref().as_ref());
-            let response = ListOffsetsResponse4::read(&mut buf).expect("listoffets response body");
+            let response = ListOffsetsResponseV4::read(&mut buf).expect("listoffets response body");
             eprintln!("Received ListOffets response: {:#?}", response);
         })
         .map_err(|e| panic!("Error: {}", e));

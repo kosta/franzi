@@ -1,4 +1,5 @@
 pub mod types;
+pub mod api_keys;
 
 use bytes::{BufMut, Bytes};
 use std::io::Cursor;
@@ -29,4 +30,12 @@ pub trait ToBytes {
 
     /// panics if there is not enough capacity in the Buffer
     fn write(&self, bytes: &mut BufMut);
+}
+
+pub trait KafkaRequest : FromBytes + ToBytes{
+    type Response: FromBytes + ToBytes;
+
+    fn api_key() -> i16;
+
+    fn api_version() -> i16;
 }
