@@ -157,6 +157,19 @@ impl fmt::Debug for KafkaString {
     }
 }
 
+// TODO: Is this such a good idea?
+impl From<&str> for KafkaString {
+    fn from(s: &str) -> Self {
+        KafkaString(s.as_bytes().into())
+    }
+}
+
+impl From<String> for KafkaString {
+    fn from(s: String) -> Self {
+        KafkaString(Bytes::from(Vec::from(s)))
+    }
+}
+
 impl FromKafkaBytes for KafkaString {
     fn read(bytes: &mut Cursor<Bytes>) -> Result<Self, FromBytesError> {
         <Option<KafkaString> as FromKafkaBytes>::read(bytes).and_then(|s| s.ok_or(FromBytesError))
