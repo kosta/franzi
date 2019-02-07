@@ -14,7 +14,6 @@ use std::sync::atomic::AtomicIsize;
 use std::sync::atomic::Ordering::Relaxed;
 use std::sync::Arc;
 use tokio::codec::{Decoder, Encoder, Framed};
-use tokio::io::{AsyncRead, AsyncWrite};
 use tokio::net::tcp::TcpStream;
 use tokio::prelude::stream::{SplitSink, SplitStream};
 
@@ -176,7 +175,10 @@ where
                     Ok(Async::Ready(Some((id, chan)))) => {
                         self.correlations.insert(id, chan);
                     }
-                    Ok(Async::Ready(None)) => self.correlations_closed = false,
+                    Ok(Async::Ready(None)) => {
+                        // Correlations channel is closed, but continue to read tcp stream as long as there are outstanding requests
+                        self.correlations_closed = true;
+                    },
                     Ok(Async::NotReady) => break,
                     Err(()) => unreachable!("BrokerResponse got mpsc channel error"),
                 };
@@ -198,9 +200,12 @@ where
                 .remove(&correlation_id)
                 .expect("BrokerResponse: got unknown correlation id in response");
 
-            if response_chan.send(buf.freeze()).is_err() {
-                // TODO: Proper Logging setup
-                eprintln!("BrokerResponse: Sending buf to response channel error");
+            // ignore send errors to response_chan. If the recipient is no longer interested, we're neither.
+            let _ = response_chan.send(buf.freeze());
+
+            if self.correlations_closed && self.correlations.is_empty() {
+                // No remaining outstanding requests
+                return Ok(Async::Ready(()));
             }
         }
     }
@@ -225,6 +230,9 @@ impl Decoder for ConnectionCodec {
     type Error = std::io::Error;
 
     fn decode(&mut self, buf: &mut BytesMut) -> Result<Option<Self::Item>, Self::Error> {
+        if buf.len() < 4 {
+            return Ok(None);
+        }
         let n = byteorder::NetworkEndian::read_i32(buf.as_ref()) as usize;
         if buf.len() < n + 4 {
             // not long enough (yet)
