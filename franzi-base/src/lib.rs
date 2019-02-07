@@ -1,9 +1,11 @@
 #![forbid(unsafe_code)]
 
-pub mod types;
 pub mod api_keys;
+pub mod types;
 
 use bytes::{BufMut, Bytes};
+use futures::sync::oneshot::Canceled;
+use std::fmt;
 use std::io::Cursor;
 
 #[derive(Debug)]
@@ -34,11 +36,69 @@ pub trait ToKafkaBytes {
     fn write(&self, bytes: &mut BufMut);
 }
 
+/// Blanket impl so that you can pass an &ToKafkaBytes to an Framed/Encoder
+impl<'a, T: ToKafkaBytes> ToKafkaBytes for &'a T {
+    fn len_to_write(&self) -> usize {
+        (*self).len_to_write()
+    }
+
+    fn write(&self, bytes: &mut BufMut) {
+        (*self).write(bytes)
+    }
+}
+
 /// A Kafka request knows it's own api key and api version, as well its response type
-pub trait KafkaRequest : FromKafkaBytes + ToKafkaBytes{
+pub trait KafkaRequest: FromKafkaBytes + ToKafkaBytes {
     type Response: FromKafkaBytes + ToKafkaBytes;
 
-    fn api_key() -> i16;
+    fn api_key(&self) -> i16;
 
-    fn api_version() -> i16;
+    fn api_version(&self) -> i16;
+}
+
+#[derive(Debug)]
+pub enum Error {
+    FromBytesError,
+    ToBytesError,
+    Canceled,
+}
+
+impl From<FromBytesError> for Error {
+    fn from(_: FromBytesError) -> Self {
+        Error::FromBytesError
+    }
+}
+
+impl From<ToBytesError> for Error {
+    fn from(_: ToBytesError) -> Self {
+        Error::ToBytesError
+    }
+}
+
+impl From<Canceled> for Error {
+    fn from(_: Canceled) -> Self {
+        Error::Canceled
+    }
+}
+
+impl fmt::Display for Error {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}", std::error::Error::description(self))
+    }
+}
+
+impl std::error::Error for Error {
+    fn description(&self) -> &str {
+        match self {
+            Error::FromBytesError => "error reading kafka message",
+            Error::ToBytesError => "error writing kafka message",
+            Error::Canceled => "response Canceled (connection closed)",
+        }
+    }
+    fn cause(&self) -> Option<&dyn std::error::Error> {
+        None
+    }
+    fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
+        None
+    }
 }

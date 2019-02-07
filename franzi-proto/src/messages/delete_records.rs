@@ -1,4 +1,5 @@
-kafka_message!("DeleteRecords Request (Version: 0) => [topics] timeout
+kafka_message!(
+    "DeleteRecords Request (Version: 0) => [topics] timeout
   topics => topic [partitions]
     topic => STRING
     partitions => partition offset
@@ -13,9 +14,11 @@ partitions	null
 partition	Topic partition id
 offset	The offset before which the messages will be deleted. -1 means
 high-watermark for the partition.
-timeout	The maximum time to await a response in ms.");
+timeout	The maximum time to await a response in ms."
+);
 
-kafka_message!("DeleteRecords Request (Version: 1) => [topics] timeout
+kafka_message!(
+    "DeleteRecords Request (Version: 1) => [topics] timeout
   topics => topic [partitions]
     topic => STRING
     partitions => partition offset
@@ -30,9 +33,11 @@ partitions	null
 partition	Topic partition id
 offset	The offset before which the messages will be deleted. -1 means
 high-watermark for the partition.
-timeout	The maximum time to await a response in ms.");
+timeout	The maximum time to await a response in ms."
+);
 
-kafka_message!("DeleteRecords Response (Version: 0) => throttle_time_ms [topics]
+kafka_message!(
+    "DeleteRecords Response (Version: 0) => throttle_time_ms [topics]
   throttle_time_ms => INT32
   topics => topic [partitions]
     topic => STRING
@@ -50,9 +55,11 @@ topic	Name of topic
 partitions	null
 partition	Topic partition id
 low_watermark	Smallest available offset of all live replicas
-error_code	Response error code");
+error_code	Response error code"
+);
 
-kafka_message!("DeleteRecords Response (Version: 1) => throttle_time_ms [topics]
+kafka_message!(
+    "DeleteRecords Response (Version: 1) => throttle_time_ms [topics]
   throttle_time_ms => INT32
   topics => topic [partitions]
     topic => STRING
@@ -70,4 +77,5 @@ topic	Name of topic
 partitions	null
 partition	Topic partition id
 low_watermark	Smallest available offset of all live replicas
-error_code	Response error code");
+error_code	Response error code"
+);

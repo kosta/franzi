@@ -1,43 +1,41 @@
-kafka_message!("Metadata Request (Version: 0) => [topics]
+kafka_message!(
+    "Metadata Request (Version: 0) => [topics]
   topics => STRING
 
 Field 	Description
 topics	An array of topics to fetch metadata for. If no topics are
-specified fetch metadata for all topics.");
+specified fetch metadata for all topics."
+);
 
-kafka_message!("Metadata Request (Version: 1) => [topics]
+kafka_message!(
+    "Metadata Request (Version: 1) => [topics]
   topics => STRING
 
 Field 	Description
 topics	An array of topics to fetch metadata for. If the topics array is
-null fetch metadata for all topics.");
+null fetch metadata for all topics."
+);
 
-kafka_message!("Metadata Request (Version: 2) => [topics]
+kafka_message!(
+    "Metadata Request (Version: 2) => [topics]
   topics => STRING
 
 Field 	Description
 topics	An array of topics to fetch metadata for. If the topics array is
-null fetch metadata for all topics.");
+null fetch metadata for all topics."
+);
 
-kafka_message!("Metadata Request (Version: 3) => [topics]
+kafka_message!(
+    "Metadata Request (Version: 3) => [topics]
   topics => STRING
 
 Field 	Description
 topics	An array of topics to fetch metadata for. If the topics array is
-null fetch metadata for all topics.");
+null fetch metadata for all topics."
+);
 
-kafka_message!("Metadata Request (Version: 4) => [topics] allow_auto_topic_creation
-  topics => STRING
-  allow_auto_topic_creation => BOOLEAN
-
-Field 	Description
-topics	An array of topics to fetch metadata for. If the topics array is
-null fetch metadata for all topics.
-allow_auto_topic_creation	If this and the broker config
-|auto.create.topics.enable| are true, topics that don't exist will be
-created by the broker. Otherwise, no topics will be created by the broker.");
-
-kafka_message!("Metadata Request (Version: 5) => [topics] allow_auto_topic_creation
+kafka_message!(
+    "Metadata Request (Version: 4) => [topics] allow_auto_topic_creation
   topics => STRING
   allow_auto_topic_creation => BOOLEAN
 
@@ -46,9 +44,11 @@ topics	An array of topics to fetch metadata for. If the topics array is
 null fetch metadata for all topics.
 allow_auto_topic_creation	If this and the broker config
 |auto.create.topics.enable| are true, topics that don't exist will be
-created by the broker. Otherwise, no topics will be created by the broker.");
+created by the broker. Otherwise, no topics will be created by the broker."
+);
 
-kafka_message!("Metadata Request (Version: 6) => [topics] allow_auto_topic_creation
+kafka_message!(
+    "Metadata Request (Version: 5) => [topics] allow_auto_topic_creation
   topics => STRING
   allow_auto_topic_creation => BOOLEAN
 
@@ -57,9 +57,11 @@ topics	An array of topics to fetch metadata for. If the topics array is
 null fetch metadata for all topics.
 allow_auto_topic_creation	If this and the broker config
 |auto.create.topics.enable| are true, topics that don't exist will be
-created by the broker. Otherwise, no topics will be created by the broker.");
+created by the broker. Otherwise, no topics will be created by the broker."
+);
 
-kafka_message!("Metadata Request (Version: 7) => [topics] allow_auto_topic_creation
+kafka_message!(
+    "Metadata Request (Version: 6) => [topics] allow_auto_topic_creation
   topics => STRING
   allow_auto_topic_creation => BOOLEAN
 
@@ -68,9 +70,24 @@ topics	An array of topics to fetch metadata for. If the topics array is
 null fetch metadata for all topics.
 allow_auto_topic_creation	If this and the broker config
 |auto.create.topics.enable| are true, topics that don't exist will be
-created by the broker. Otherwise, no topics will be created by the broker.");
+created by the broker. Otherwise, no topics will be created by the broker."
+);
 
-kafka_message!("Metadata Response (Version: 0) => [brokers] [topic_metadata]
+kafka_message!(
+    "Metadata Request (Version: 7) => [topics] allow_auto_topic_creation
+  topics => STRING
+  allow_auto_topic_creation => BOOLEAN
+
+Field 	Description
+topics	An array of topics to fetch metadata for. If the topics array is
+null fetch metadata for all topics.
+allow_auto_topic_creation	If this and the broker config
+|auto.create.topics.enable| are true, topics that don't exist will be
+created by the broker. Otherwise, no topics will be created by the broker."
+);
+
+kafka_message!(
+    "Metadata Response (Version: 0) => [brokers] [topic_metadata]
   brokers => node_id host port
     node_id => INT32
     host => STRING
@@ -98,9 +115,11 @@ error_code	Response error code
 partition	Topic partition id
 leader	The id of the broker acting as leader for this partition.
 replicas	The set of all nodes that host this partition.
-isr	The set of nodes that are in sync with the leader for this partition.");
+isr	The set of nodes that are in sync with the leader for this partition."
+);
 
-kafka_message!("Metadata Response (Version: 1) => [brokers] controller_id [topic_metadata]
+kafka_message!(
+    "Metadata Response (Version: 1) => [brokers] controller_id [topic_metadata]
   brokers => node_id host port rack
     node_id => INT32
     host => STRING
@@ -134,9 +153,11 @@ error_code	Response error code
 partition	Topic partition id
 leader	The id of the broker acting as leader for this partition.
 replicas	The set of all nodes that host this partition.
-isr	The set of nodes that are in sync with the leader for this partition.");
+isr	The set of nodes that are in sync with the leader for this partition."
+);
 
-kafka_message!("Metadata Response (Version: 2) => [brokers] cluster_id controller_id [topic_metadata]
+kafka_message!(
+    "Metadata Response (Version: 2) => [brokers] cluster_id controller_id [topic_metadata]
   brokers => node_id host port rack
     node_id => INT32
     host => STRING
@@ -172,7 +193,8 @@ error_code	Response error code
 partition	Topic partition id
 leader	The id of the broker acting as leader for this partition.
 replicas	The set of all nodes that host this partition.
-isr	The set of nodes that are in sync with the leader for this partition.");
+isr	The set of nodes that are in sync with the leader for this partition."
+);
 
 kafka_message!("Metadata Response (Version: 3) => throttle_time_ms [brokers] cluster_id controller_id [topic_metadata]
   throttle_time_ms => INT32

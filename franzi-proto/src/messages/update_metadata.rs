@@ -196,32 +196,42 @@ listener_name	The listener name.
 security_protocol_type	The security protocol type.
 rack	The rack");
 
-kafka_message!("UpdateMetadata Response (Version: 0) => error_code
+kafka_message!(
+    "UpdateMetadata Response (Version: 0) => error_code
   error_code => INT16
 
 Field 	Description
-error_code	Response error code");
+error_code	Response error code"
+);
 
-kafka_message!("UpdateMetadata Response (Version: 1) => error_code
+kafka_message!(
+    "UpdateMetadata Response (Version: 1) => error_code
   error_code => INT16
 
 Field 	Description
-error_code	Response error code");
+error_code	Response error code"
+);
 
-kafka_message!("UpdateMetadata Response (Version: 2) => error_code
+kafka_message!(
+    "UpdateMetadata Response (Version: 2) => error_code
   error_code => INT16
 
 Field 	Description
-error_code	Response error code");
+error_code	Response error code"
+);
 
-kafka_message!("UpdateMetadata Response (Version: 3) => error_code
+kafka_message!(
+    "UpdateMetadata Response (Version: 3) => error_code
   error_code => INT16
 
 Field 	Description
-error_code	Response error code");
+error_code	Response error code"
+);
 
-kafka_message!("UpdateMetadata Response (Version: 4) => error_code
+kafka_message!(
+    "UpdateMetadata Response (Version: 4) => error_code
   error_code => INT16
 
 Field 	Description
-error_code	Response error code");
+error_code	Response error code"
+);

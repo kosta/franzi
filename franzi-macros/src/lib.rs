@@ -93,11 +93,11 @@ fn to_rust_type(field2is_array: &HashMap<&str, bool>, name: &str, field_type: &s
 ///
 ///        type Response = ApiVersionsResponseV2;
 ///
-///        fn api_key() -> i16 {
+///        fn api_key(&self) -> i16 {
 ///            ::franzi_base::api_keys::ApiKey::ApiVersions as i16
 ///        }
 ///
-///        fn api_version() -> i16 {
+///        fn api_version(&self) -> i16 {
 ///            2i16
 ///        }
 ///    }
@@ -227,8 +227,16 @@ pub fn kafka_message(input: proc_macro::TokenStream) -> proc_macro::TokenStream 
                 .get(*field)
                 .unwrap_or_else(|| panic!("field2type[{:?}]", field));
             let field_type = to_rust_type(&field2is_array, field, field_type);
-            let comment = field2comment.get(*field).unwrap_or_else(|| panic!("field2comment[{:?}]", field));
-            lines.push(syn::parse_str(&format!("#[doc = {:?}] pub {}: {},", comment, field, field_type)).unwrap());
+            let comment = field2comment
+                .get(*field)
+                .unwrap_or_else(|| panic!("field2comment[{:?}]", field));
+            lines.push(
+                syn::parse_str(&format!(
+                    "#[doc = {:?}] pub {}: {},",
+                    comment, field, field_type
+                ))
+                .unwrap(),
+            );
         }
         field_lines.insert(typ.clone(), lines);
     }
@@ -237,7 +245,11 @@ pub fn kafka_message(input: proc_macro::TokenStream) -> proc_macro::TokenStream 
 
     // only use the "spec" lines (not the comment lines) for the type comment
     // otherwise, it's too ugly...
-    let spec_str = input_str.lines().take(spec_lines).collect::<Vec<_>>().join("\n");
+    let spec_str = input_str
+        .lines()
+        .take(spec_lines)
+        .collect::<Vec<_>>()
+        .join("\n");
 
     for (typename, lines) in field_lines {
         // eprintln!("Writing TokenStream for type {:?}", typename);
@@ -263,7 +275,10 @@ pub fn kafka_message(input: proc_macro::TokenStream) -> proc_macro::TokenStream 
     if reqresp == "Request" {
         // eprintln!("Is Request Version {} api_name {:?}", version, api_name);
         let typename = Ident::new(&typename_str, Span::call_site());
-        let response_type = Ident::new(&format!("{}ResponseV{}", api_name, version), Span::call_site());
+        let response_type = Ident::new(
+            &format!("{}ResponseV{}", api_name, version),
+            Span::call_site(),
+        );
         let version: i16 = version.parse().expect("numberic version");
         let api_key = Ident::new(api_name, Span::call_site());
 
@@ -271,11 +286,11 @@ pub fn kafka_message(input: proc_macro::TokenStream) -> proc_macro::TokenStream 
             impl ::franzi_base::KafkaRequest for #typename {
                 type Response = #response_type;
 
-                fn api_key() -> i16 {
+                fn api_key(&self) -> i16 {
                     ::franzi_base::api_keys::ApiKey::#api_key as i16
                 }
 
-                fn api_version() -> i16 {
+                fn api_version(&self) -> i16 {
                     #version
                 }
             }

@@ -6,7 +6,7 @@ use std::mem::size_of;
 
 use bytes::{Buf, BufMut, Bytes};
 
-use crate::{FromKafkaBytes, FromBytesError, ToKafkaBytes};
+use crate::{FromBytesError, FromKafkaBytes, ToKafkaBytes};
 
 /// BOOLEAN	Represents a boolean value in a byte. Values 0 and 1 are used to represent false and true respectively. When reading a boolean value, any non-zero value is considered true.
 impl FromKafkaBytes for bool {
