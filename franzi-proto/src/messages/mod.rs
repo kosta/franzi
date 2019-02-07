@@ -2,6 +2,7 @@
 // pub mod fetch;
 pub mod controlled_shutdown;
 pub mod find_coordinator;
+pub mod join_group;
 pub mod leader_and_isr;
 pub mod list_offsets;
 pub mod metadata;
