@@ -178,7 +178,7 @@ where
                     Ok(Async::Ready(None)) => {
                         // Correlations channel is closed, but continue to read tcp stream as long as there are outstanding requests
                         self.correlations_closed = true;
-                    },
+                    }
                     Ok(Async::NotReady) => break,
                     Err(()) => unreachable!("BrokerResponse got mpsc channel error"),
                 };

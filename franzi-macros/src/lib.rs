@@ -133,7 +133,6 @@ fn to_rust_type(field2is_array: &HashMap<&str, bool>, name: &str, field_type: &s
 ///
 #[proc_macro]
 pub fn kafka_message(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
-
     // Note for the fellow developer: I'm really not proud of this code, this is
     // my first "real" proc_macro. If you know how to do this better, send a PR :)
 
@@ -214,7 +213,11 @@ pub fn kafka_message(input: proc_macro::TokenStream) -> proc_macro::TokenStream 
                     let rust_type = to_rust_type(&field2is_array, name, primitive_type);
                     let existing = field2type.insert(name.to_string(), rust_type.clone());
                     if let Some(existing) = existing {
-                        assert_eq!(existing, rust_type, "Expected identical type of field {:?} that appears twice", name);
+                        assert_eq!(
+                            existing, rust_type,
+                            "Expected identical type of field {:?} that appears twice",
+                            name
+                        );
                     }
 
                     // done for this lines
@@ -233,7 +236,11 @@ pub fn kafka_message(input: proc_macro::TokenStream) -> proc_macro::TokenStream 
             type2fields.insert(subtype_name.clone(), fields);
             let existing = field2type.insert(name.to_string(), subtype_name.clone());
             if let Some(existing) = existing {
-                assert_eq!(existing, subtype_name, "Expected identical type of field {:?} that appears twice", name);
+                assert_eq!(
+                    existing, subtype_name,
+                    "Expected identical type of field {:?} that appears twice",
+                    name
+                );
             }
         }
     }
