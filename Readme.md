@@ -18,6 +18,7 @@
 
 * (x) Implement derive(FromKafkaBytes, ToKafkaBytes)
 * (x) Implement kafka_message!()
+  * ( ) Allow multiple fields with same name but different types (in different (sub)structs)
 * ( ) Implement varint, Record, MessageSet
 * ( ) Implement all messages
 * ( ) Protocol Versioning concept
