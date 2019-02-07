@@ -4,6 +4,7 @@ pub mod controlled_shutdown;
 pub mod leader_and_isr;
 pub mod list_offsets;
 pub mod metadata;
+pub mod offset_commit;
 pub mod stop_replica;
 pub mod update_metadata;
 
