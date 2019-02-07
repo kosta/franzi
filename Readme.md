@@ -13,19 +13,38 @@
 
 * In development, not usable
 * Non-blocking futures/tokio-based API only
+* Can only connect to a single broker
+
+## Modules overview
+
+TODO: Links to docs.rs once it's up there
+
+* `franzi-base` contains
+  * Basic traits (`ToKafkaBytes`, `ForKafkaBytes`, `KafkaRequest`) and error types
+  * `ApiKey` enum
+  * Kafka primitive types (bool, i16, KafkaString, ...)
+* `franzi-macros` contains
+  * macros to derive `ToKafkaBytes`, `ForKafkaBytes`
+  * macro `kafka_message!()` to generate Kafka messages from the [Kafka Protocol Spec](http://kafka.apache.org/protocol.html)
+* `franzi-proto` contains
+  * structs for each Kafka messages and its sub-structures
+  * structs for Kafka message parts such as RequestHeader, ResponseHeader, Record (TODO) etc.
+* `franzi-client` contains
+  * client structs to easily talk to kafka brokers, both low-level (sending specific messages to a specific broker) as well as high-level (producer/consumer etc. TODO)
+* `franzi` command-line client (TODO)
 
 ## Progress
 
 * (x) Implement derive(FromKafkaBytes, ToKafkaBytes)
 * (x) Implement kafka_message!()
-  * ( ) Allow multiple fields with same name but different types (in different (sub)structs)
-  * ( ) Notice bad line breaks in comments
 * ( ) Implement varint, Record, MessageSet
 * ( ) Implement all messages
 * ( ) Protocol Versioning concept
   * (x) Each Request knows its own version and its response type
 * ( ) Error handling
+  * (x) Introduce basic error type
 * ( ) Write a client
+  * (x) Implement very basic client that can only connect to a single broker
 
 ## Help Needed!
 
