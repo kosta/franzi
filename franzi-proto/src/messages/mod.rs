@@ -1,5 +1,6 @@
 // pub mod produce;
 // pub mod fetch;
+pub mod controlled_shutdown;
 pub mod leader_and_isr;
 pub mod list_offsets;
 pub mod metadata;
