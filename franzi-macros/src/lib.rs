@@ -133,6 +133,10 @@ fn to_rust_type(field2is_array: &HashMap<&str, bool>, name: &str, field_type: &s
 ///
 #[proc_macro]
 pub fn kafka_message(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
+
+    // Note for the fellow developer: I'm really not proud of this code, this is
+    // my first "real" proc_macro. If you know how to do this better, send a PR :)
+
     let mut tokens: Vec<proc_macro::TokenTree> = input.into_iter().collect();
     assert_eq!(tokens.len(), 1);
     let input_str = match tokens.remove(0) {
@@ -208,7 +212,10 @@ pub fn kafka_message(input: proc_macro::TokenStream) -> proc_macro::TokenStream 
                 if let Some(primitive_type) = primitive_type(fields_or_type[0]) {
                     // eprintln!("field {:?} has primitive type {:?}", name, primitive_type);
                     let rust_type = to_rust_type(&field2is_array, name, primitive_type);
-                    field2type.insert(name.to_string(), rust_type);
+                    let existing = field2type.insert(name.to_string(), rust_type.clone());
+                    if let Some(existing) = existing {
+                        assert_eq!(existing, rust_type, "Expected identical type of field {:?} that appears twice", name);
+                    }
 
                     // done for this lines
                     continue;
@@ -224,7 +231,10 @@ pub fn kafka_message(input: proc_macro::TokenStream) -> proc_macro::TokenStream 
                 fields.push(field_name);
             }
             type2fields.insert(subtype_name.clone(), fields);
-            field2type.insert(name.to_string(), subtype_name);
+            let existing = field2type.insert(name.to_string(), subtype_name.clone());
+            if let Some(existing) = existing {
+                assert_eq!(existing, subtype_name, "Expected identical type of field {:?} that appears twice", name);
+            }
         }
     }
 
