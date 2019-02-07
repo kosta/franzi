@@ -48,14 +48,7 @@ kafka_message!(
 
 Field 	Description
 replica_id	Broker id of the follower. For normal consumers, use -1.
-isolation_level	This setting controls the visibility of transactional
-records. Using READ_UNCOMMITTED (isolation_level = 0) makes all records
-visible. With READ_COMMITTED (isolation_level = 1), non-transactional
-and COMMITTED transactional records are visible. To be more concrete,
-READ_COMMITTED returns all data from offsets smaller than the current
-LSO (last stable offset), and enables the inclusion of the list of
-aborted transactions in the result, which allows consumers to discard
-ABORTED transactional records
+isolation_level	This setting controls the visibility of transactional records. Using READ_UNCOMMITTED (isolation_level = 0) makes all records visible. With READ_COMMITTED (isolation_level = 1), non-transactional and COMMITTED transactional records are visible. To be more concrete, READ_COMMITTED returns all data from offsets smaller than the current LSO (last stable offset), and enables the inclusion of the list of aborted transactions in the result, which allows consumers to discard ABORTED transactional records
 topics	Topics to list offsets.
 topic	Name of topic
 partitions	Partitions to list offsets.
@@ -75,14 +68,7 @@ kafka_message!(
 
 Field 	Description
 replica_id	Broker id of the follower. For normal consumers, use -1.
-isolation_level	This setting controls the visibility of transactional
-records. Using READ_UNCOMMITTED (isolation_level = 0) makes all records
-visible. With READ_COMMITTED (isolation_level = 1), non-transactional
-and COMMITTED transactional records are visible. To be more concrete,
-READ_COMMITTED returns all data from offsets smaller than the current
-LSO (last stable offset), and enables the inclusion of the list of
-aborted transactions in the result, which allows consumers to discard
-ABORTED transactional records
+isolation_level	This setting controls the visibility of transactional records. Using READ_UNCOMMITTED (isolation_level = 0) makes all records visible. With READ_COMMITTED (isolation_level = 1), non-transactional and COMMITTED transactional records are visible. To be more concrete, READ_COMMITTED returns all data from offsets smaller than the current LSO (last stable offset), and enables the inclusion of the list of aborted transactions in the result, which allows consumers to discard ABORTED transactional records
 topics	Topics to list offsets.
 topic	Name of topic
 partitions	Partitions to list offsets.
@@ -103,23 +89,12 @@ kafka_message!(
 
 Field 	Description
 replica_id	Broker id of the follower. For normal consumers, use -1.
-isolation_level	This setting controls the visibility of transactional
-records. Using READ_UNCOMMITTED (isolation_level = 0) makes all records
-visible. With READ_COMMITTED (isolation_level = 1), non-transactional
-and COMMITTED transactional records are visible. To be more concrete,
-READ_COMMITTED returns all data from offsets smaller than the current
-LSO (last stable offset), and enables the inclusion of the list of
-aborted transactions in the result, which allows consumers to discard
-ABORTED transactional records
+isolation_level	This setting controls the visibility of transactional records. Using READ_UNCOMMITTED (isolation_level = 0) makes all records visible. With READ_COMMITTED (isolation_level = 1), non-transactional and COMMITTED transactional records are visible. To be more concrete, READ_COMMITTED returns all data from offsets smaller than the current LSO (last stable offset), and enables the inclusion of the list of aborted transactions in the result, which allows consumers to discard ABORTED transactional records
 topics	Topics to list offsets.
 topic	Name of topic
 partitions	Partitions to list offsets.
 partition	Topic partition id
-current_leader_epoch	The current leader epoch, if provided, is used to
-fence consumers/replicas with old metadata. If the epoch provided by the
-client is larger than the current epoch known to the broker, then the
-UNKNOWN_LEADER_EPOCH error code will be returned. If the provided epoch
-is smaller, then the FENCED_LEADER_EPOCH error code will be returned.
+current_leader_epoch	The current leader epoch, if provided, is used to fence consumers/replicas with old metadata. If the epoch provided by the client is larger than the current epoch known to the broker, then the UNKNOWN_LEADER_EPOCH error code will be returned. If the provided epoch is smaller, then the FENCED_LEADER_EPOCH error code will be returned. timestamp	The target timestamp for the partition.
 timestamp	The target timestamp for the partition."
 );
 
@@ -173,9 +148,7 @@ kafka_message!(
       offset => INT64
 
 Field 	Description
-throttle_time_ms	Duration in milliseconds for which the request was
-throttled due to quota violation (Zero if the request did not violate
-any quota)
+throttle_time_ms	Duration in milliseconds for which the request was throttled due to quota violation (Zero if the request did not violate any quota)
 responses	The listed offsets by topic
 topic	Name of topic
 partition_responses	The listed offsets by partition
@@ -197,9 +170,7 @@ kafka_message!(
       offset => INT64
 
 Field 	Description
-throttle_time_ms	Duration in milliseconds for which the request was
-throttled due to quota violation (Zero if the request did not violate
-any quota)
+throttle_time_ms	Duration in milliseconds for which the request was throttled due to quota violation (Zero if the request did not violate any quota)
 responses	The listed offsets by topic
 topic	Name of topic
 partition_responses	The listed offsets by partition
@@ -222,9 +193,7 @@ kafka_message!(
       leader_epoch => INT32
 
 Field 	Description
-throttle_time_ms	Duration in milliseconds for which the request was
-throttled due to quota violation (Zero if the request did not violate
-any quota)
+throttle_time_ms	Duration in milliseconds for which the request was throttled due to quota violation (Zero if the request did not violate any quota)
 responses	The listed offsets by topic
 topic	Name of topic
 partition_responses	The listed offsets by partition

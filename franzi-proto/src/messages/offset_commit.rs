@@ -34,8 +34,7 @@ kafka_message!(
 Field 	Description
 group_id	The unique group identifier
 generation_id	The generation of the group.
-member_id	The member id assigned by the group coordinator or null if
-joining for the first time.
+member_id	The member id assigned by the group coordinator or null if joining for the first time.
 topics	Topics to commit offsets
 topic	Name of topic
 partitions	Partitions to commit offsets
@@ -61,8 +60,7 @@ kafka_message!(
 Field 	Description
 group_id	The unique group identifier
 generation_id	The generation of the group.
-member_id	The member id assigned by the group coordinator or null if
-joining for the first time.
+member_id	The member id assigned by the group coordinator or null if joining for the first time.
 retention_time	Time period in ms to retain the offset.
 topics	Topics to commit offsets
 topic	Name of topic
@@ -88,8 +86,7 @@ kafka_message!(
 Field 	Description
 group_id	The unique group identifier
 generation_id	The generation of the group.
-member_id	The member id assigned by the group coordinator or null if
-joining for the first time.
+member_id	The member id assigned by the group coordinator or null if joining for the first time.
 retention_time	Time period in ms to retain the offset.
 topics	Topics to commit offsets
 topic	Name of topic
@@ -115,8 +112,7 @@ kafka_message!(
 Field 	Description
 group_id	The unique group identifier
 generation_id	The generation of the group.
-member_id	The member id assigned by the group coordinator or null if
-joining for the first time.
+member_id	The member id assigned by the group coordinator or null if joining for the first time.
 retention_time	Time period in ms to retain the offset.
 topics	Topics to commit offsets
 topic	Name of topic
@@ -141,8 +137,7 @@ kafka_message!(
 Field 	Description
 group_id	The unique group identifier
 generation_id	The generation of the group.
-member_id	The member id assigned by the group coordinator or null if
-joining for the first time.
+member_id	The member id assigned by the group coordinator or null if joining for the first time.
 topics	Topics to commit offsets
 topic	Name of topic
 partitions	Partitions to commit offsets
@@ -167,17 +162,13 @@ kafka_message!(
 Field 	Description
 group_id	The unique group identifier
 generation_id	The generation of the group.
-member_id	The member id assigned by the group coordinator or null if
-joining for the first time.
+member_id	The member id assigned by the group coordinator or null if joining for the first time.
 topics	Topics to commit offsets
 topic	Name of topic
 partitions	Partitions to commit offsets
 partition	Topic partition id
 offset	Message offset to be committed
-leader_epoch	The leader epoch, if provided is derived from the last
-consumed record. This is used by the consumer to check for log
-truncation and to ensure partition metadata is up to date following a
-group rebalance.
+leader_epoch	The leader epoch, if provided is derived from the last consumed record. This is used by the consumer to check for log truncation and to ensure partition metadata is up to date following a group rebalance.
 metadata	Any associated metadata the client wants to keep."
 );
 
@@ -239,9 +230,7 @@ kafka_message!(
       error_code => INT16
 
 Field 	Description
-throttle_time_ms	Duration in milliseconds for which the request was
-throttled due to quota violation (Zero if the request did not violate
-any quota)
+throttle_time_ms	Duration in milliseconds for which the request was throttled due to quota violation (Zero if the request did not violate any quota)
 responses	Responses by topic for committed partitions
 topic	Name of topic
 partition_responses	Responses for committed partitions
@@ -259,9 +248,7 @@ kafka_message!(
       error_code => INT16
 
 Field 	Description
-throttle_time_ms	Duration in milliseconds for which the request was
-throttled due to quota violation (Zero if the request did not violate
-any quota)
+throttle_time_ms	Duration in milliseconds for which the request was throttled due to quota violation (Zero if the request did not violate any quota)
 responses	Responses by topic for committed partitions
 topic	Name of topic
 partition_responses	Responses for committed partitions
@@ -279,9 +266,7 @@ kafka_message!(
       error_code => INT16
 
 Field 	Description
-throttle_time_ms	Duration in milliseconds for which the request was
-throttled due to quota violation (Zero if the request did not violate
-any quota)
+throttle_time_ms	Duration in milliseconds for which the request was throttled due to quota violation (Zero if the request did not violate any quota)
 responses	Responses by topic for committed partitions
 topic	Name of topic
 partition_responses	Responses for committed partitions
@@ -299,9 +284,7 @@ kafka_message!(
       error_code => INT16
 
 Field 	Description
-throttle_time_ms	Duration in milliseconds for which the request was
-throttled due to quota violation (Zero if the request did not violate
-any quota)
+throttle_time_ms	Duration in milliseconds for which the request was throttled due to quota violation (Zero if the request did not violate any quota)
 responses	Responses by topic for committed partitions
 topic	Name of topic
 partition_responses	Responses for committed partitions

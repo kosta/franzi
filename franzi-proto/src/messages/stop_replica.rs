@@ -9,8 +9,7 @@ kafka_message!("StopReplica Request (Version: 0) => controller_id controller_epo
 Field 	Description
 controller_id	The controller id.
 controller_epoch	The controller epoch.
-delete_partitions	Boolean which indicates if replica's partitions must
-be deleted.
+delete_partitions	Boolean which indicates if replica's partitions must be deleted.
 partitions	null
 topic	Name of topic
 partition	Topic partition id");
