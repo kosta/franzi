@@ -14,7 +14,10 @@ mod tests {
     use std::fmt::Debug;
     use std::io::Cursor;
 
-    pub fn write_then_read_eq<T: FromKafkaBytes + ToKafkaBytes + Eq + Debug>(input: T, expected: &[u8]) {
+    pub fn write_then_read_eq<T: FromKafkaBytes + ToKafkaBytes + Eq + Debug>(
+        input: T,
+        expected: &[u8],
+    ) {
         let mut buf = BytesMut::with_capacity(input.len_to_write());
         input.write(&mut buf);
         assert_eq!(expected, &buf);

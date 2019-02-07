@@ -15,7 +15,8 @@ partitions	null
 topic	Name of topic
 partition	Topic partition id");
 
-kafka_message!("StopReplica Response (Version: 0) => error_code [partitions]
+kafka_message!(
+    "StopReplica Response (Version: 0) => error_code [partitions]
   error_code => INT16
   partitions => topic partition error_code
     topic => STRING
@@ -27,4 +28,5 @@ error_code	Response error code
 partitions	null
 topic	Name of topic
 partition	Topic partition id
-error_code	Response error code");
+error_code	Response error code"
+);
