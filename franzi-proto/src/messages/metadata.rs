@@ -3,8 +3,7 @@ kafka_message!(
   topics => STRING
 
 Field 	Description
-topics	An array of topics to fetch metadata for. If no topics are
-specified fetch metadata for all topics."
+topics	An array of topics to fetch metadata for. If no topics are specified fetch metadata for all topics."
 );
 
 kafka_message!(
@@ -12,8 +11,7 @@ kafka_message!(
   topics => STRING
 
 Field 	Description
-topics	An array of topics to fetch metadata for. If the topics array is
-null fetch metadata for all topics."
+topics	An array of topics to fetch metadata for. If the topics array is null fetch metadata for all topics."
 );
 
 kafka_message!(
@@ -21,8 +19,7 @@ kafka_message!(
   topics => STRING
 
 Field 	Description
-topics	An array of topics to fetch metadata for. If the topics array is
-null fetch metadata for all topics."
+topics	An array of topics to fetch metadata for. If the topics array is null fetch metadata for all topics."
 );
 
 kafka_message!(
@@ -30,8 +27,7 @@ kafka_message!(
   topics => STRING
 
 Field 	Description
-topics	An array of topics to fetch metadata for. If the topics array is
-null fetch metadata for all topics."
+topics	An array of topics to fetch metadata for. If the topics array is null fetch metadata for all topics."
 );
 
 kafka_message!(
@@ -40,11 +36,8 @@ kafka_message!(
   allow_auto_topic_creation => BOOLEAN
 
 Field 	Description
-topics	An array of topics to fetch metadata for. If the topics array is
-null fetch metadata for all topics.
-allow_auto_topic_creation	If this and the broker config
-|auto.create.topics.enable| are true, topics that don't exist will be
-created by the broker. Otherwise, no topics will be created by the broker."
+topics	An array of topics to fetch metadata for. If the topics array is null fetch metadata for all topics.
+allow_auto_topic_creation	If this and the broker config |auto.create.topics.enable| are true, topics that don't exist will be created by the broker. Otherwise, no topics will be created by the broker."
 );
 
 kafka_message!(
@@ -53,11 +46,8 @@ kafka_message!(
   allow_auto_topic_creation => BOOLEAN
 
 Field 	Description
-topics	An array of topics to fetch metadata for. If the topics array is
-null fetch metadata for all topics.
-allow_auto_topic_creation	If this and the broker config
-|auto.create.topics.enable| are true, topics that don't exist will be
-created by the broker. Otherwise, no topics will be created by the broker."
+topics	An array of topics to fetch metadata for. If the topics array is null fetch metadata for all topics.
+allow_auto_topic_creation	If this and the broker config |auto.create.topics.enable| are true, topics that don't exist will be created by the broker. Otherwise, no topics will be created by the broker."
 );
 
 kafka_message!(
@@ -66,11 +56,8 @@ kafka_message!(
   allow_auto_topic_creation => BOOLEAN
 
 Field 	Description
-topics	An array of topics to fetch metadata for. If the topics array is
-null fetch metadata for all topics.
-allow_auto_topic_creation	If this and the broker config
-|auto.create.topics.enable| are true, topics that don't exist will be
-created by the broker. Otherwise, no topics will be created by the broker."
+topics	An array of topics to fetch metadata for. If the topics array is null fetch metadata for all topics.
+allow_auto_topic_creation	If this and the broker config |auto.create.topics.enable| are true, topics that don't exist will be created by the broker. Otherwise, no topics will be created by the broker."
 );
 
 kafka_message!(
@@ -79,11 +66,8 @@ kafka_message!(
   allow_auto_topic_creation => BOOLEAN
 
 Field 	Description
-topics	An array of topics to fetch metadata for. If the topics array is
-null fetch metadata for all topics.
-allow_auto_topic_creation	If this and the broker config
-|auto.create.topics.enable| are true, topics that don't exist will be
-created by the broker. Otherwise, no topics will be created by the broker."
+topics	An array of topics to fetch metadata for. If the topics array is null fetch metadata for all topics.
+allow_auto_topic_creation	If this and the broker config |auto.create.topics.enable| are true, topics that don't exist will be created by the broker. Otherwise, no topics will be created by the broker."
 );
 
 kafka_message!(
@@ -217,9 +201,7 @@ kafka_message!("Metadata Response (Version: 3) => throttle_time_ms [brokers] clu
       isr => INT32
 
 Field 	Description
-throttle_time_ms	Duration in milliseconds for which the request was
-throttled due to quota violation (Zero if the request did not violate
-any quota)
+throttle_time_ms	Duration in milliseconds for which the request was throttled due to quota violation (Zero if the request did not violate any quota)
 brokers	Host and port information for all brokers.
 node_id	The broker id.
 host	The hostname of the broker.
@@ -259,9 +241,7 @@ kafka_message!("Metadata Response (Version: 4) => throttle_time_ms [brokers] clu
       isr => INT32
 
 Field 	Description
-throttle_time_ms	Duration in milliseconds for which the request was
-throttled due to quota violation (Zero if the request did not violate
-any quota)
+throttle_time_ms	Duration in milliseconds for which the request was throttled due to quota violation (Zero if the request did not violate any quota)
 brokers	Host and port information for all brokers.
 node_id	The broker id.
 host	The hostname of the broker.
@@ -302,9 +282,7 @@ kafka_message!("Metadata Response (Version: 5) => throttle_time_ms [brokers] clu
       offline_replicas => INT32
 
 Field 	Description
-throttle_time_ms	Duration in milliseconds for which the request was
-throttled due to quota violation (Zero if the request did not violate
-any quota)
+throttle_time_ms	Duration in milliseconds for which the request was throttled due to quota violation (Zero if the request did not violate any quota)
 brokers	Host and port information for all brokers.
 node_id	The broker id.
 host	The hostname of the broker.
@@ -346,9 +324,7 @@ kafka_message!("Metadata Response (Version: 6) => throttle_time_ms [brokers] clu
       offline_replicas => INT32
 
 Field 	Description
-throttle_time_ms	Duration in milliseconds for which the request was
-throttled due to quota violation (Zero if the request did not violate
-any quota)
+throttle_time_ms	Duration in milliseconds for which the request was throttled due to quota violation (Zero if the request did not violate any quota)
 brokers	Host and port information for all brokers.
 node_id	The broker id.
 host	The hostname of the broker.
@@ -391,9 +367,7 @@ kafka_message!("Metadata Response (Version: 7) => throttle_time_ms [brokers] clu
       offline_replicas => INT32
 
 Field 	Description
-throttle_time_ms	Duration in milliseconds for which the request was
-throttled due to quota violation (Zero if the request did not violate
-any quota)
+throttle_time_ms	Duration in milliseconds for which the request was throttled due to quota violation (Zero if the request did not violate any quota)
 brokers	Host and port information for all brokers.
 node_id	The broker id.
 host	The hostname of the broker.

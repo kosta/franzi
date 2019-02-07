@@ -183,8 +183,17 @@ pub fn kafka_message(input: proc_macro::TokenStream) -> proc_macro::TokenStream 
             parsing_comments = true;
         } else if parsing_comments {
             let mut field_and_comment = line.trim().splitn(2, char::is_whitespace);
-            let field = field_and_comment.next().expect("field name");
-            let comment = field_and_comment.next().expect("field comment");
+            let field = field_and_comment.next().expect("field name").trim();
+            let comment = field_and_comment.next().expect("field comment").trim();
+            if field == "Field" && comment == "Description" {
+                continue;
+            }
+            if !field2is_array.contains_key(&field) {
+                panic!(
+                    "Unexpected comment for field: {:?} comment: {:?}",
+                    field, comment
+                );
+            }
             field2comment.insert(field, comment);
         } else {
             spec_lines += 1;
