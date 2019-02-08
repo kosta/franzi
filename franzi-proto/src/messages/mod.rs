@@ -1,6 +1,7 @@
 // pub mod produce;
 // pub mod fetch;
 pub mod controlled_shutdown;
+pub mod describe_groups;
 pub mod find_coordinator;
 pub mod heartbeat;
 pub mod join_group;
