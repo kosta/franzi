@@ -61,6 +61,7 @@ pub enum Error {
     FromBytesError,
     ToBytesError,
     Canceled,
+    ProtocolError(i16),
 }
 
 impl From<FromBytesError> for Error {
@@ -83,7 +84,10 @@ impl From<Canceled> for Error {
 
 impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}", std::error::Error::description(self))
+        match self {
+            Error::ProtocolError(code) => write!(f, "protocol error response {}", code),
+            _ => write!(f, "{}", std::error::Error::description(self)),
+        }
     }
 }
 
@@ -93,6 +97,7 @@ impl std::error::Error for Error {
             Error::FromBytesError => "error reading kafka message",
             Error::ToBytesError => "error writing kafka message",
             Error::Canceled => "response Canceled (connection closed)",
+            Error::ProtocolError(_) => "protocol error response"
         }
     }
     fn cause(&self) -> Option<&dyn std::error::Error> {
