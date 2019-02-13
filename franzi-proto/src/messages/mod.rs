@@ -14,6 +14,7 @@ pub mod offset_fetch;
 pub mod stop_replica;
 pub mod sync_group;
 pub mod update_metadata;
+pub mod list_groups;
 
 pub mod api_versions;
 pub mod delete_records;
