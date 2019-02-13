@@ -17,5 +17,6 @@ pub mod update_metadata;
 pub mod list_groups;
 pub mod sasl_handshake;
 pub mod api_versions;
+pub mod create_topics;
 
 pub mod delete_records;
