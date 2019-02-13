@@ -179,8 +179,6 @@ data	null
 partition	Topic partition id
 record_set	null
 
-*Responses:*
-
 Produce Response (Version: 0) => [responses]
   responses => topic [partition_responses]
     topic => STRING
@@ -213,9 +211,7 @@ partition_responses	null
 partition	Topic partition id
 error_code	Response error code
 base_offset	null
-throttle_time_ms	Duration in milliseconds for which the request was
-throttled due to quota violation (Zero if the request did not violate
-any quota)
+throttle_time_ms	Duration in milliseconds for which the request was throttled due to quota violation (Zero if the request did not violate any quota)
 
 Produce Response (Version: 2) => [responses] throttle_time_ms
   responses => topic [partition_responses]
@@ -238,9 +234,7 @@ log_append_time	The timestamp returned by broker after appending the
 messages. If CreateTime is used for the topic, the timestamp will be -1.
 If LogAppendTime is used for the topic, the timestamp will be the broker
 local time when the messages are appended.
-throttle_time_ms	Duration in milliseconds for which the request was
-throttled due to quota violation (Zero if the request did not violate
-any quota)
+throttle_time_ms	Duration in milliseconds for which the request was throttled due to quota violation (Zero if the request did not violate any quota)
 
 Produce Response (Version: 3) => [responses] throttle_time_ms
   responses => topic [partition_responses]
@@ -263,9 +257,7 @@ log_append_time	The timestamp returned by broker after appending the
 messages. If CreateTime is used for the topic, the timestamp will be -1.
 If LogAppendTime is used for the topic, the timestamp will be the broker
 local time when the messages are appended.
-throttle_time_ms	Duration in milliseconds for which the request was
-throttled due to quota violation (Zero if the request did not violate
-any quota)
+throttle_time_ms	Duration in milliseconds for which the request was throttled due to quota violation (Zero if the request did not violate any quota)
 
 Produce Response (Version: 4) => [responses] throttle_time_ms
   responses => topic [partition_responses]
@@ -288,9 +280,7 @@ log_append_time	The timestamp returned by broker after appending the
 messages. If CreateTime is used for the topic, the timestamp will be -1.
 If LogAppendTime is used for the topic, the timestamp will be the broker
 local time when the messages are appended.
-throttle_time_ms	Duration in milliseconds for which the request was
-throttled due to quota violation (Zero if the request did not violate
-any quota)
+throttle_time_ms	Duration in milliseconds for which the request was throttled due to quota violation (Zero if the request did not violate any quota)
 
 Produce Response (Version: 5) => [responses] throttle_time_ms
   responses => topic [partition_responses]
@@ -316,9 +306,7 @@ If LogAppendTime is used for the topic, the timestamp will be the broker
 local time when the messages are appended.
 log_start_offset	The start offset of the log at the time this produce
 response was created
-throttle_time_ms	Duration in milliseconds for which the request was
-throttled due to quota violation (Zero if the request did not violate
-any quota)
+throttle_time_ms	Duration in milliseconds for which the request was throttled due to quota violation (Zero if the request did not violate any quota)
 
 Produce Response (Version: 6) => [responses] throttle_time_ms
   responses => topic [partition_responses]
@@ -344,9 +332,7 @@ If LogAppendTime is used for the topic, the timestamp will be the broker
 local time when the messages are appended.
 log_start_offset	The start offset of the log at the time this produce
 response was created
-throttle_time_ms	Duration in milliseconds for which the request was
-throttled due to quota violation (Zero if the request did not violate
-any quota)
+throttle_time_ms	Duration in milliseconds for which the request was throttled due to quota violation (Zero if the request did not violate any quota)
 
 Produce Response (Version: 7) => [responses] throttle_time_ms
   responses => topic [partition_responses]
@@ -372,9 +358,7 @@ If LogAppendTime is used for the topic, the timestamp will be the broker
 local time when the messages are appended.
 log_start_offset	The start offset of the log at the time this produce
 response was created
-throttle_time_ms	Duration in milliseconds for which the request was
-throttled due to quota violation (Zero if the request did not violate
-any quota)
+throttle_time_ms	Duration in milliseconds for which the request was throttled due to quota violation (Zero if the request did not violate any quota)
 
 
           Fetch API (Key: 1):
@@ -796,8 +780,6 @@ forgotten_topics_data	Topics to remove from the fetch session.
 topic	Name of topic
 partitions	Partitions to remove from the fetch session.
 
-*Responses:*
-
 Fetch Response (Version: 0) => [responses]
   responses => topic [partition_responses]
     topic => STRING
@@ -830,9 +812,7 @@ Fetch Response (Version: 1) => throttle_time_ms [responses]
       record_set => RECORDS
 
 Field 	Description
-throttle_time_ms	Duration in milliseconds for which the request was
-throttled due to quota violation (Zero if the request did not violate
-any quota)
+throttle_time_ms	Duration in milliseconds for which the request was throttled due to quota violation (Zero if the request did not violate any quota)
 responses	null
 topic	Name of topic
 partition_responses	null
@@ -854,9 +834,7 @@ Fetch Response (Version: 2) => throttle_time_ms [responses]
       record_set => RECORDS
 
 Field 	Description
-throttle_time_ms	Duration in milliseconds for which the request was
-throttled due to quota violation (Zero if the request did not violate
-any quota)
+throttle_time_ms	Duration in milliseconds for which the request was throttled due to quota violation (Zero if the request did not violate any quota)
 responses	null
 topic	Name of topic
 partition_responses	null
@@ -878,9 +856,7 @@ Fetch Response (Version: 3) => throttle_time_ms [responses]
       record_set => RECORDS
 
 Field 	Description
-throttle_time_ms	Duration in milliseconds for which the request was
-throttled due to quota violation (Zero if the request did not violate
-any quota)
+throttle_time_ms	Duration in milliseconds for which the request was throttled due to quota violation (Zero if the request did not violate any quota)
 responses	null
 topic	Name of topic
 partition_responses	null
@@ -906,9 +882,7 @@ Fetch Response (Version: 4) => throttle_time_ms [responses]
       record_set => RECORDS
 
 Field 	Description
-throttle_time_ms	Duration in milliseconds for which the request was
-throttled due to quota violation (Zero if the request did not violate
-any quota)
+throttle_time_ms	Duration in milliseconds for which the request was throttled due to quota violation (Zero if the request did not violate any quota)
 responses	null
 topic	Name of topic
 partition_responses	null
@@ -941,9 +915,7 @@ Fetch Response (Version: 5) => throttle_time_ms [responses]
       record_set => RECORDS
 
 Field 	Description
-throttle_time_ms	Duration in milliseconds for which the request was
-throttled due to quota violation (Zero if the request did not violate
-any quota)
+throttle_time_ms	Duration in milliseconds for which the request was throttled due to quota violation (Zero if the request did not violate any quota)
 responses	null
 topic	Name of topic
 partition_responses	null
@@ -977,9 +949,7 @@ Fetch Response (Version: 6) => throttle_time_ms [responses]
       record_set => RECORDS
 
 Field 	Description
-throttle_time_ms	Duration in milliseconds for which the request was
-throttled due to quota violation (Zero if the request did not violate
-any quota)
+throttle_time_ms	Duration in milliseconds for which the request was throttled due to quota violation (Zero if the request did not violate any quota)
 responses	null
 topic	Name of topic
 partition_responses	null
@@ -1015,9 +985,7 @@ Fetch Response (Version: 7) => throttle_time_ms error_code session_id [responses
       record_set => RECORDS
 
 Field 	Description
-throttle_time_ms	Duration in milliseconds for which the request was
-throttled due to quota violation (Zero if the request did not violate
-any quota)
+throttle_time_ms	Duration in milliseconds for which the request was throttled due to quota violation (Zero if the request did not violate any quota)
 error_code	Response error code
 session_id	The fetch session ID
 responses	null
@@ -1055,9 +1023,7 @@ Fetch Response (Version: 8) => throttle_time_ms error_code session_id [responses
       record_set => RECORDS
 
 Field 	Description
-throttle_time_ms	Duration in milliseconds for which the request was
-throttled due to quota violation (Zero if the request did not violate
-any quota)
+throttle_time_ms	Duration in milliseconds for which the request was throttled due to quota violation (Zero if the request did not violate any quota)
 error_code	Response error code
 session_id	The fetch session ID
 responses	null
@@ -1095,9 +1061,7 @@ Fetch Response (Version: 9) => throttle_time_ms error_code session_id [responses
       record_set => RECORDS
 
 Field 	Description
-throttle_time_ms	Duration in milliseconds for which the request was
-throttled due to quota violation (Zero if the request did not violate
-any quota)
+throttle_time_ms	Duration in milliseconds for which the request was throttled due to quota violation (Zero if the request did not violate any quota)
 error_code	Response error code
 session_id	The fetch session ID
 responses	null
@@ -1135,9 +1099,7 @@ Fetch Response (Version: 10) => throttle_time_ms error_code session_id [response
       record_set => RECORDS
 
 Field 	Description
-throttle_time_ms	Duration in milliseconds for which the request was
-throttled due to quota violation (Zero if the request did not violate
-any quota)
+throttle_time_ms	Duration in milliseconds for which the request was throttled due to quota violation (Zero if the request did not violate any quota)
 error_code	Response error code
 session_id	The fetch session ID
 responses	null
@@ -1157,105 +1119,6 @@ first_offset	The first offset in the aborted transaction
 record_set	null
 
 
-
-
-          DeleteTopics API (Key: 20):
-
-*Requests:*
-
-DeleteTopics Request (Version: 0) => [topics] timeout
-  topics => STRING
-  timeout => INT32
-
-Field 	Description
-topics	An array of topics to be deleted.
-timeout	The time in ms to wait for a topic to be completely deleted on
-the controller node. Values <= 0 will trigger topic deletion and return
-immediately
-
-DeleteTopics Request (Version: 1) => [topics] timeout
-  topics => STRING
-  timeout => INT32
-
-Field 	Description
-topics	An array of topics to be deleted.
-timeout	The time in ms to wait for a topic to be completely deleted on
-the controller node. Values <= 0 will trigger topic deletion and return
-immediately
-
-DeleteTopics Request (Version: 2) => [topics] timeout
-  topics => STRING
-  timeout => INT32
-
-Field 	Description
-topics	An array of topics to be deleted.
-timeout	The time in ms to wait for a topic to be completely deleted on
-the controller node. Values <= 0 will trigger topic deletion and return
-immediately
-
-DeleteTopics Request (Version: 3) => [topics] timeout
-  topics => STRING
-  timeout => INT32
-
-Field 	Description
-topics	An array of topics to be deleted.
-timeout	The time in ms to wait for a topic to be completely deleted on
-the controller node. Values <= 0 will trigger topic deletion and return
-immediately
-
-*Responses:*
-
-DeleteTopics Response (Version: 0) => [topic_error_codes]
-  topic_error_codes => topic error_code
-    topic => STRING
-    error_code => INT16
-
-Field 	Description
-topic_error_codes	An array of per topic error codes.
-topic	Name of topic
-error_code	Response error code
-
-DeleteTopics Response (Version: 1) => throttle_time_ms [topic_error_codes]
-  throttle_time_ms => INT32
-  topic_error_codes => topic error_code
-    topic => STRING
-    error_code => INT16
-
-Field 	Description
-throttle_time_ms	Duration in milliseconds for which the request was
-throttled due to quota violation (Zero if the request did not violate
-any quota)
-topic_error_codes	An array of per topic error codes.
-topic	Name of topic
-error_code	Response error code
-
-DeleteTopics Response (Version: 2) => throttle_time_ms [topic_error_codes]
-  throttle_time_ms => INT32
-  topic_error_codes => topic error_code
-    topic => STRING
-    error_code => INT16
-
-Field 	Description
-throttle_time_ms	Duration in milliseconds for which the request was
-throttled due to quota violation (Zero if the request did not violate
-any quota)
-topic_error_codes	An array of per topic error codes.
-topic	Name of topic
-error_code	Response error code
-
-DeleteTopics Response (Version: 3) => throttle_time_ms [topic_error_codes]
-  throttle_time_ms => INT32
-  topic_error_codes => topic error_code
-    topic => STRING
-    error_code => INT16
-
-Field 	Description
-throttle_time_ms	Duration in milliseconds for which the request was
-throttled due to quota violation (Zero if the request did not violate
-any quota)
-topic_error_codes	An array of per topic error codes.
-topic	Name of topic
-error_code	Response error code
 
           InitProducerId API (Key: 22):
 
@@ -1281,8 +1144,6 @@ transactional
 transaction_timeout_ms	The time in ms to wait for before aborting idle
 transactions sent by this producer.
 
-*Responses:*
-
 InitProducerId Response (Version: 0) => throttle_time_ms error_code producer_id producer_epoch
   throttle_time_ms => INT32
   error_code => INT16
@@ -1290,9 +1151,7 @@ InitProducerId Response (Version: 0) => throttle_time_ms error_code producer_id 
   producer_epoch => INT16
 
 Field 	Description
-throttle_time_ms	Duration in milliseconds for which the request was
-throttled due to quota violation (Zero if the request did not violate
-any quota)
+throttle_time_ms	Duration in milliseconds for which the request was throttled due to quota violation (Zero if the request did not violate any quota)
 error_code	Response error code
 producer_id	Current producer id in use by the transactional id.
 producer_epoch	Current epoch associated with the producer id.
@@ -1304,9 +1163,7 @@ InitProducerId Response (Version: 1) => throttle_time_ms error_code producer_id 
   producer_epoch => INT16
 
 Field 	Description
-throttle_time_ms	Duration in milliseconds for which the request was
-throttled due to quota violation (Zero if the request did not violate
-any quota)
+throttle_time_ms	Duration in milliseconds for which the request was throttled due to quota violation (Zero if the request did not violate any quota)
 error_code	Response error code
 producer_id	Current producer id in use by the transactional id.
 producer_epoch	Current epoch associated with the producer id.
@@ -1364,8 +1221,6 @@ UNKNOWN_LEADER_EPOCH error code will be returned. If the provided epoch
 is smaller, then the FENCED_LEADER_EPOCH error code will be returned.
 leader_epoch	The epoch to lookup an offset for.
 
-*Responses:*
-
 OffsetForLeaderEpoch Response (Version: 0) => [topics]
   topics => topic [partitions]
     topic => STRING
@@ -1413,9 +1268,7 @@ OffsetForLeaderEpoch Response (Version: 2) => throttle_time_ms [topics]
       end_offset => INT64
 
 Field 	Description
-throttle_time_ms	Duration in milliseconds for which the request was
-throttled due to quota violation (Zero if the request did not violate
-any quota)
+throttle_time_ms	Duration in milliseconds for which the request was throttled due to quota violation (Zero if the request did not violate any quota)
 topics	An array of topics for which we have leader offsets for some
 requested partition leader epoch
 topic	Name of topic
@@ -1462,8 +1315,6 @@ topics	The partitions to add to the transaction.
 topic	Name of topic
 partitions	null
 
-*Responses:*
-
 AddPartitionsToTxn Response (Version: 0) => throttle_time_ms [errors]
   throttle_time_ms => INT32
   errors => topic [partition_errors]
@@ -1473,9 +1324,7 @@ AddPartitionsToTxn Response (Version: 0) => throttle_time_ms [errors]
       error_code => INT16
 
 Field 	Description
-throttle_time_ms	Duration in milliseconds for which the request was
-throttled due to quota violation (Zero if the request did not violate
-any quota)
+throttle_time_ms	Duration in milliseconds for which the request was throttled due to quota violation (Zero if the request did not violate any quota)
 errors	null
 topic	Name of topic
 partition_errors	null
@@ -1491,9 +1340,7 @@ AddPartitionsToTxn Response (Version: 1) => throttle_time_ms [errors]
       error_code => INT16
 
 Field 	Description
-throttle_time_ms	Duration in milliseconds for which the request was
-throttled due to quota violation (Zero if the request did not violate
-any quota)
+throttle_time_ms	Duration in milliseconds for which the request was throttled due to quota violation (Zero if the request did not violate any quota)
 errors	null
 topic	Name of topic
 partition_errors	null
@@ -1529,16 +1376,12 @@ producer_id	Current producer id in use by the transactional id.
 producer_epoch	Current epoch associated with the producer id.
 group_id	The unique group identifier
 
-*Responses:*
-
 AddOffsetsToTxn Response (Version: 0) => throttle_time_ms error_code
   throttle_time_ms => INT32
   error_code => INT16
 
 Field 	Description
-throttle_time_ms	Duration in milliseconds for which the request was
-throttled due to quota violation (Zero if the request did not violate
-any quota)
+throttle_time_ms	Duration in milliseconds for which the request was throttled due to quota violation (Zero if the request did not violate any quota)
 error_code	Response error code
 
 AddOffsetsToTxn Response (Version: 1) => throttle_time_ms error_code
@@ -1546,9 +1389,7 @@ AddOffsetsToTxn Response (Version: 1) => throttle_time_ms error_code
   error_code => INT16
 
 Field 	Description
-throttle_time_ms	Duration in milliseconds for which the request was
-throttled due to quota violation (Zero if the request did not violate
-any quota)
+throttle_time_ms	Duration in milliseconds for which the request was throttled due to quota violation (Zero if the request did not violate any quota)
 error_code	Response error code
 
 
@@ -1580,16 +1421,12 @@ producer_id	Current producer id in use by the transactional id.
 producer_epoch	Current epoch associated with the producer id.
 transaction_result	The result of the transaction (0 = ABORT, 1 = COMMIT)
 
-*Responses:*
-
 EndTxn Response (Version: 0) => throttle_time_ms error_code
   throttle_time_ms => INT32
   error_code => INT16
 
 Field 	Description
-throttle_time_ms	Duration in milliseconds for which the request was
-throttled due to quota violation (Zero if the request did not violate
-any quota)
+throttle_time_ms	Duration in milliseconds for which the request was throttled due to quota violation (Zero if the request did not violate any quota)
 error_code	Response error code
 
 EndTxn Response (Version: 1) => throttle_time_ms error_code
@@ -1597,9 +1434,7 @@ EndTxn Response (Version: 1) => throttle_time_ms error_code
   error_code => INT16
 
 Field 	Description
-throttle_time_ms	Duration in milliseconds for which the request was
-throttled due to quota violation (Zero if the request did not violate
-any quota)
+throttle_time_ms	Duration in milliseconds for which the request was throttled due to quota violation (Zero if the request did not violate any quota)
 error_code	Response error code
 
 
@@ -1628,8 +1463,6 @@ topic	Name of topic
 partitions	null
 coordinator_epoch	Epoch associated with the transaction state partition
 hosted by this transaction coordinator
-
-*Responses:*
 
 WriteTxnMarkers Response (Version: 0) => [transaction_markers]
   transaction_markers => producer_id [topics]
@@ -1731,8 +1564,6 @@ truncation and to ensure partition metadata is up to date following a
 group rebalance.
 metadata	Any associated metadata the client wants to keep.
 
-*Responses:*
-
 TxnOffsetCommit Response (Version: 0) => throttle_time_ms [topics]
   throttle_time_ms => INT32
   topics => topic [partitions]
@@ -1742,9 +1573,7 @@ TxnOffsetCommit Response (Version: 0) => throttle_time_ms [topics]
       error_code => INT16
 
 Field 	Description
-throttle_time_ms	Duration in milliseconds for which the request was
-throttled due to quota violation (Zero if the request did not violate
-any quota)
+throttle_time_ms	Duration in milliseconds for which the request was throttled due to quota violation (Zero if the request did not violate any quota)
 topics	Responses by topic for committed offsets
 topic	Name of topic
 partitions	Responses by partition for committed offsets
@@ -1760,9 +1589,7 @@ TxnOffsetCommit Response (Version: 1) => throttle_time_ms [topics]
       error_code => INT16
 
 Field 	Description
-throttle_time_ms	Duration in milliseconds for which the request was
-throttled due to quota violation (Zero if the request did not violate
-any quota)
+throttle_time_ms	Duration in milliseconds for which the request was throttled due to quota violation (Zero if the request did not violate any quota)
 topics	Responses by topic for committed offsets
 topic	Name of topic
 partitions	Responses by partition for committed offsets
@@ -1778,9 +1605,7 @@ TxnOffsetCommit Response (Version: 2) => throttle_time_ms [topics]
       error_code => INT16
 
 Field 	Description
-throttle_time_ms	Duration in milliseconds for which the request was
-throttled due to quota violation (Zero if the request did not violate
-any quota)
+throttle_time_ms	Duration in milliseconds for which the request was throttled due to quota violation (Zero if the request did not violate any quota)
 topics	Responses by topic for committed offsets
 topic	Name of topic
 partitions	Responses by partition for committed offsets
@@ -1826,8 +1651,6 @@ host	The ACL host filter
 operation	The ACL operation
 permission_type	The ACL permission type
 
-*Responses:*
-
 DescribeAcls Response (Version: 0) => throttle_time_ms error_code error_message [resources]
   throttle_time_ms => INT32
   error_code => INT16
@@ -1842,9 +1665,7 @@ DescribeAcls Response (Version: 0) => throttle_time_ms error_code error_message 
       permission_type => INT8
 
 Field 	Description
-throttle_time_ms	Duration in milliseconds for which the request was
-throttled due to quota violation (Zero if the request did not violate
-any quota)
+throttle_time_ms	Duration in milliseconds for which the request was throttled due to quota violation (Zero if the request did not violate any quota)
 error_code	Response error code
 error_message	Response error message
 resources	The resources and their associated ACLs.
@@ -1871,9 +1692,7 @@ DescribeAcls Response (Version: 1) => throttle_time_ms error_code error_message 
       permission_type => INT8
 
 Field 	Description
-throttle_time_ms	Duration in milliseconds for which the request was
-throttled due to quota violation (Zero if the request did not violate
-any quota)
+throttle_time_ms	Duration in milliseconds for which the request was throttled due to quota violation (Zero if the request did not violate any quota)
 error_code	Response error code
 error_message	Response error message
 resources	The resources and their associated ACLs.
@@ -1929,8 +1748,6 @@ host	The ACL host
 operation	The ACL operation
 permission_type	The ACL permission type
 
-*Responses:*
-
 CreateAcls Response (Version: 0) => throttle_time_ms [creation_responses]
   throttle_time_ms => INT32
   creation_responses => error_code error_message
@@ -1938,9 +1755,7 @@ CreateAcls Response (Version: 0) => throttle_time_ms [creation_responses]
     error_message => NULLABLE_STRING
 
 Field 	Description
-throttle_time_ms	Duration in milliseconds for which the request was
-throttled due to quota violation (Zero if the request did not violate
-any quota)
+throttle_time_ms	Duration in milliseconds for which the request was throttled due to quota violation (Zero if the request did not violate any quota)
 creation_responses	null
 error_code	Response error code
 error_message	Response error message
@@ -1952,9 +1767,7 @@ CreateAcls Response (Version: 1) => throttle_time_ms [creation_responses]
     error_message => NULLABLE_STRING
 
 Field 	Description
-throttle_time_ms	Duration in milliseconds for which the request was
-throttled due to quota violation (Zero if the request did not violate
-any quota)
+throttle_time_ms	Duration in milliseconds for which the request was throttled due to quota violation (Zero if the request did not violate any quota)
 creation_responses	null
 error_code	Response error code
 error_message	Response error message
@@ -2002,8 +1815,6 @@ host	The ACL host filter
 operation	The ACL operation
 permission_type	The ACL permission type
 
-*Responses:*
-
 DeleteAcls Response (Version: 0) => throttle_time_ms [filter_responses]
   throttle_time_ms => INT32
   filter_responses => error_code error_message [matching_acls]
@@ -2020,9 +1831,7 @@ DeleteAcls Response (Version: 0) => throttle_time_ms [filter_responses]
       permission_type => INT8
 
 Field 	Description
-throttle_time_ms	Duration in milliseconds for which the request was
-throttled due to quota violation (Zero if the request did not violate
-any quota)
+throttle_time_ms	Duration in milliseconds for which the request was throttled due to quota violation (Zero if the request did not violate any quota)
 filter_responses	null
 error_code	Response error code
 error_message	Response error message
@@ -2053,9 +1862,7 @@ DeleteAcls Response (Version: 1) => throttle_time_ms [filter_responses]
       permission_type => INT8
 
 Field 	Description
-throttle_time_ms	Duration in milliseconds for which the request was
-throttled due to quota violation (Zero if the request did not violate
-any quota)
+throttle_time_ms	Duration in milliseconds for which the request was throttled due to quota violation (Zero if the request did not violate any quota)
 filter_responses	null
 error_code	Response error code
 error_message	Response error message
@@ -2115,8 +1922,6 @@ resource_name	null
 config_names	null
 include_synonyms	null
 
-*Responses:*
-
 DescribeConfigs Response (Version: 0) => throttle_time_ms [resources]
   throttle_time_ms => INT32
   resources => error_code error_message resource_type resource_name [config_entries]
@@ -2132,9 +1937,7 @@ DescribeConfigs Response (Version: 0) => throttle_time_ms [resources]
       is_sensitive => BOOLEAN
 
 Field 	Description
-throttle_time_ms	Duration in milliseconds for which the request was
-throttled due to quota violation (Zero if the request did not violate
-any quota)
+throttle_time_ms	Duration in milliseconds for which the request was throttled due to quota violation (Zero if the request did not violate any quota)
 resources	null
 error_code	Response error code
 error_message	Response error message
@@ -2166,9 +1969,7 @@ DescribeConfigs Response (Version: 1) => throttle_time_ms [resources]
         config_source => INT8
 
 Field 	Description
-throttle_time_ms	Duration in milliseconds for which the request was
-throttled due to quota violation (Zero if the request did not violate
-any quota)
+throttle_time_ms	Duration in milliseconds for which the request was throttled due to quota violation (Zero if the request did not violate any quota)
 resources	null
 error_code	Response error code
 error_message	Response error message
@@ -2204,9 +2005,7 @@ DescribeConfigs Response (Version: 2) => throttle_time_ms [resources]
         config_source => INT8
 
 Field 	Description
-throttle_time_ms	Duration in milliseconds for which the request was
-throttled due to quota violation (Zero if the request did not violate
-any quota)
+throttle_time_ms	Duration in milliseconds for which the request was throttled due to quota violation (Zero if the request did not violate any quota)
 resources	null
 error_code	Response error code
 error_message	Response error message
@@ -2264,8 +2063,6 @@ config_name	Configuration name
 config_value	Configuration value
 validate_only	null
 
-*Responses:*
-
 AlterConfigs Response (Version: 0) => throttle_time_ms [resources]
   throttle_time_ms => INT32
   resources => error_code error_message resource_type resource_name
@@ -2275,9 +2072,7 @@ AlterConfigs Response (Version: 0) => throttle_time_ms [resources]
     resource_name => STRING
 
 Field 	Description
-throttle_time_ms	Duration in milliseconds for which the request was
-throttled due to quota violation (Zero if the request did not violate
-any quota)
+throttle_time_ms	Duration in milliseconds for which the request was throttled due to quota violation (Zero if the request did not violate any quota)
 resources	null
 error_code	Response error code
 error_message	Response error message
@@ -2293,9 +2088,7 @@ AlterConfigs Response (Version: 1) => throttle_time_ms [resources]
     resource_name => STRING
 
 Field 	Description
-throttle_time_ms	Duration in milliseconds for which the request was
-throttled due to quota violation (Zero if the request did not violate
-any quota)
+throttle_time_ms	Duration in milliseconds for which the request was throttled due to quota violation (Zero if the request did not violate any quota)
 resources	null
 error_code	Response error code
 error_message	Response error message
@@ -2335,8 +2128,6 @@ topics	null
 topic	Name of topic
 partitions	List of partition ids of the topic.
 
-*Responses:*
-
 AlterReplicaLogDirs Response (Version: 0) => throttle_time_ms [topics]
   throttle_time_ms => INT32
   topics => topic [partitions]
@@ -2346,9 +2137,7 @@ AlterReplicaLogDirs Response (Version: 0) => throttle_time_ms [topics]
       error_code => INT16
 
 Field 	Description
-throttle_time_ms	Duration in milliseconds for which the request was
-throttled due to quota violation (Zero if the request did not violate
-any quota)
+throttle_time_ms	Duration in milliseconds for which the request was throttled due to quota violation (Zero if the request did not violate any quota)
 topics	null
 topic	Name of topic
 partitions	null
@@ -2364,9 +2153,7 @@ AlterReplicaLogDirs Response (Version: 1) => throttle_time_ms [topics]
       error_code => INT16
 
 Field 	Description
-throttle_time_ms	Duration in milliseconds for which the request was
-throttled due to quota violation (Zero if the request did not violate
-any quota)
+throttle_time_ms	Duration in milliseconds for which the request was throttled due to quota violation (Zero if the request did not violate any quota)
 topics	null
 topic	Name of topic
 partitions	null
@@ -2398,8 +2185,6 @@ topics	null
 topic	Name of topic
 partitions	List of partition ids of the topic.
 
-*Responses:*
-
 DescribeLogDirs Response (Version: 0) => throttle_time_ms [log_dirs]
   throttle_time_ms => INT32
   log_dirs => error_code log_dir [topics]
@@ -2414,9 +2199,7 @@ DescribeLogDirs Response (Version: 0) => throttle_time_ms [log_dirs]
         is_future => BOOLEAN
 
 Field 	Description
-throttle_time_ms	Duration in milliseconds for which the request was
-throttled due to quota violation (Zero if the request did not violate
-any quota)
+throttle_time_ms	Duration in milliseconds for which the request was throttled due to quota violation (Zero if the request did not violate any quota)
 log_dirs	null
 error_code	Response error code
 log_dir	The absolute log directory path.
@@ -2445,9 +2228,7 @@ DescribeLogDirs Response (Version: 1) => throttle_time_ms [log_dirs]
         is_future => BOOLEAN
 
 Field 	Description
-throttle_time_ms	Duration in milliseconds for which the request was
-throttled due to quota violation (Zero if the request did not violate
-any quota)
+throttle_time_ms	Duration in milliseconds for which the request was throttled due to quota violation (Zero if the request did not violate any quota)
 log_dirs	null
 error_code	Response error code
 log_dir	The absolute log directory path.
@@ -2473,8 +2254,6 @@ SaslAuthenticate Request (Version: 0) => sasl_auth_bytes
 Field 	Description
 sasl_auth_bytes	SASL authentication bytes from client as defined by the
 SASL mechanism.
-
-*Responses:*
 
 SaslAuthenticate Response (Version: 0) => error_code error_message sasl_auth_bytes
   error_code => INT16
@@ -2530,8 +2309,6 @@ timeout	The time in ms to wait for the partitions to be created.
 validate_only	If true then validate the request, but don't actually
 increase the number of partitions.
 
-*Responses:*
-
 CreatePartitions Response (Version: 0) => throttle_time_ms [topic_errors]
   throttle_time_ms => INT32
   topic_errors => topic error_code error_message
@@ -2540,9 +2317,7 @@ CreatePartitions Response (Version: 0) => throttle_time_ms [topic_errors]
     error_message => NULLABLE_STRING
 
 Field 	Description
-throttle_time_ms	Duration in milliseconds for which the request was
-throttled due to quota violation (Zero if the request did not violate
-any quota)
+throttle_time_ms	Duration in milliseconds for which the request was throttled due to quota violation (Zero if the request did not violate any quota)
 topic_errors	Per topic results for the create partitions request
 topic	Name of topic
 error_code	Response error code
@@ -2556,9 +2331,7 @@ CreatePartitions Response (Version: 1) => throttle_time_ms [topic_errors]
     error_message => NULLABLE_STRING
 
 Field 	Description
-throttle_time_ms	Duration in milliseconds for which the request was
-throttled due to quota violation (Zero if the request did not violate
-any quota)
+throttle_time_ms	Duration in milliseconds for which the request was throttled due to quota violation (Zero if the request did not violate any quota)
 topic_errors	Per topic results for the create partitions request
 topic	Name of topic
 error_code	Response error code
@@ -2599,8 +2372,6 @@ name	name of the Kafka principal
 max_life_time	Max lifetime period for token in milli seconds. if value
 is -1, then max lifetime will default to a server side config value.
 
-*Responses:*
-
 CreateDelegationToken Response (Version: 0) => error_code owner issue_timestamp expiry_timestamp max_timestamp token_id hmac throttle_time_ms
   error_code => INT16
   owner => principal_type name
@@ -2623,9 +2394,7 @@ expiry_timestamp	timestamp (in msec) at which this token expires.
 max_timestamp	max life time of this token.
 token_id	UUID to ensure uniqueness.
 hmac	HMAC of the delegation token.
-throttle_time_ms	Duration in milliseconds for which the request was
-throttled due to quota violation (Zero if the request did not violate
-any quota)
+throttle_time_ms	Duration in milliseconds for which the request was throttled due to quota violation (Zero if the request did not violate any quota)
 
 CreateDelegationToken Response (Version: 1) => error_code owner issue_timestamp expiry_timestamp max_timestamp token_id hmac throttle_time_ms
   error_code => INT16
@@ -2649,9 +2418,7 @@ expiry_timestamp	timestamp (in msec) at which this token expires.
 max_timestamp	max life time of this token.
 token_id	UUID to ensure uniqueness.
 hmac	HMAC of the delegation token.
-throttle_time_ms	Duration in milliseconds for which the request was
-throttled due to quota violation (Zero if the request did not violate
-any quota)
+throttle_time_ms	Duration in milliseconds for which the request was throttled due to quota violation (Zero if the request did not violate any quota)
 
 
           RenewDelegationToken API (Key: 39):
@@ -2674,8 +2441,6 @@ Field 	Description
 hmac	HMAC of the delegation token to be renewed.
 renew_time_period	Renew time period in milli seconds.
 
-*Responses:*
-
 RenewDelegationToken Response (Version: 0) => error_code expiry_timestamp throttle_time_ms
   error_code => INT16
   expiry_timestamp => INT64
@@ -2684,9 +2449,7 @@ RenewDelegationToken Response (Version: 0) => error_code expiry_timestamp thrott
 Field 	Description
 error_code	Response error code
 expiry_timestamp	timestamp (in msec) at which this token expires..
-throttle_time_ms	Duration in milliseconds for which the request was
-throttled due to quota violation (Zero if the request did not violate
-any quota)
+throttle_time_ms	Duration in milliseconds for which the request was throttled due to quota violation (Zero if the request did not violate any quota)
 
 RenewDelegationToken Response (Version: 1) => error_code expiry_timestamp throttle_time_ms
   error_code => INT16
@@ -2696,9 +2459,7 @@ RenewDelegationToken Response (Version: 1) => error_code expiry_timestamp thrott
 Field 	Description
 error_code	Response error code
 expiry_timestamp	timestamp (in msec) at which this token expires..
-throttle_time_ms	Duration in milliseconds for which the request was
-throttled due to quota violation (Zero if the request did not violate
-any quota)
+throttle_time_ms	Duration in milliseconds for which the request was throttled due to quota violation (Zero if the request did not violate any quota)
 
 
           ExpireDelegationToken API (Key: 40):
@@ -2721,8 +2482,6 @@ Field 	Description
 hmac	HMAC of the delegation token to be expired.
 expiry_time_period	expiry time period in milli seconds.
 
-*Responses:*
-
 ExpireDelegationToken Response (Version: 0) => error_code expiry_timestamp throttle_time_ms
   error_code => INT16
   expiry_timestamp => INT64
@@ -2731,9 +2490,7 @@ ExpireDelegationToken Response (Version: 0) => error_code expiry_timestamp throt
 Field 	Description
 error_code	Response error code
 expiry_timestamp	timestamp (in msec) at which this token expires..
-throttle_time_ms	Duration in milliseconds for which the request was
-throttled due to quota violation (Zero if the request did not violate
-any quota)
+throttle_time_ms	Duration in milliseconds for which the request was throttled due to quota violation (Zero if the request did not violate any quota)
 
 ExpireDelegationToken Response (Version: 1) => error_code expiry_timestamp throttle_time_ms
   error_code => INT16
@@ -2743,9 +2500,7 @@ ExpireDelegationToken Response (Version: 1) => error_code expiry_timestamp throt
 Field 	Description
 error_code	Response error code
 expiry_timestamp	timestamp (in msec) at which this token expires..
-throttle_time_ms	Duration in milliseconds for which the request was
-throttled due to quota violation (Zero if the request did not violate
-any quota)
+throttle_time_ms	Duration in milliseconds for which the request was throttled due to quota violation (Zero if the request did not violate any quota)
 
 
           DescribeDelegationToken API (Key: 41):
@@ -2771,8 +2526,6 @@ Field 	Description
 owners	An array of token owners.
 principal_type	principalType of the Kafka principal
 name	name of the Kafka principal
-
-*Responses:*
 
 DescribeDelegationToken Response (Version: 0) => error_code [token_details] throttle_time_ms
   error_code => INT16
@@ -2806,9 +2559,7 @@ and name string, who is allowed to renew this token before the max
 lifetime expires.
 principal_type	principalType of the Kafka principal
 name	name of the Kafka principal
-throttle_time_ms	Duration in milliseconds for which the request was
-throttled due to quota violation (Zero if the request did not violate
-any quota)
+throttle_time_ms	Duration in milliseconds for which the request was throttled due to quota violation (Zero if the request did not violate any quota)
 
 DescribeDelegationToken Response (Version: 1) => error_code [token_details] throttle_time_ms
   error_code => INT16
@@ -2842,9 +2593,7 @@ and name string, who is allowed to renew this token before the max
 lifetime expires.
 principal_type	principalType of the Kafka principal
 name	name of the Kafka principal
-throttle_time_ms	Duration in milliseconds for which the request was
-throttled due to quota violation (Zero if the request did not violate
-any quota)
+throttle_time_ms	Duration in milliseconds for which the request was throttled due to quota violation (Zero if the request did not violate any quota)
 
 
           DeleteGroups API (Key: 42):
@@ -2863,8 +2612,6 @@ DeleteGroups Request (Version: 1) => [groups]
 Field 	Description
 groups	An array of groups to be deleted.
 
-*Responses:*
-
 DeleteGroups Response (Version: 0) => throttle_time_ms [group_error_codes]
   throttle_time_ms => INT32
   group_error_codes => group_id error_code
@@ -2872,9 +2619,7 @@ DeleteGroups Response (Version: 0) => throttle_time_ms [group_error_codes]
     error_code => INT16
 
 Field 	Description
-throttle_time_ms	Duration in milliseconds for which the request was
-throttled due to quota violation (Zero if the request did not violate
-any quota)
+throttle_time_ms	Duration in milliseconds for which the request was throttled due to quota violation (Zero if the request did not violate any quota)
 group_error_codes	An array of per group error codes.
 group_id	The unique group identifier
 error_code	Response error code
@@ -2886,9 +2631,7 @@ DeleteGroups Response (Version: 1) => throttle_time_ms [group_error_codes]
     error_code => INT16
 
 Field 	Description
-throttle_time_ms	Duration in milliseconds for which the request was
-throttled due to quota violation (Zero if the request did not violate
-any quota)
+throttle_time_ms	Duration in milliseconds for which the request was throttled due to quota violation (Zero if the request did not violate any quota)
 group_error_codes	An array of per group error codes.
 group_id	The unique group identifier
 error_code	Response error code
