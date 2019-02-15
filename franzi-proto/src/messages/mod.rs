@@ -23,3 +23,4 @@ pub mod delete_records;
 pub mod init_producer_id;
 pub mod offset_for_leader_epoch;
 pub mod add_partition_to_txn;
+pub mod add_offsets_to_txn;
