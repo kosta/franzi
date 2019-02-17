@@ -32,3 +32,4 @@ pub mod create_acls;
 pub mod delete_acls;
 pub mod describe_configs;
 pub mod alter_configs;
+pub mod alter_replica_log_dirs;
