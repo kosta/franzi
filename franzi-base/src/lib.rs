@@ -2,6 +2,7 @@
 
 pub mod api_keys;
 pub mod types;
+pub(crate) mod varint;
 
 use bytes::{BufMut, Bytes};
 use futures::sync::oneshot::Canceled;

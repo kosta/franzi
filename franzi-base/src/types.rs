@@ -6,7 +6,7 @@ use std::mem::size_of;
 
 use bytes::{Buf, BufMut, Bytes};
 
-use crate::{FromBytesError, FromKafkaBytes, ToKafkaBytes};
+use crate::{varint, FromBytesError, FromKafkaBytes, ToKafkaBytes};
 
 /// BOOLEAN	Represents a boolean value in a byte. Values 0 and 1 are used to represent false and true respectively. When reading a boolean value, any non-zero value is considered true.
 impl FromKafkaBytes for bool {
@@ -133,16 +133,70 @@ impl ToKafkaBytes for u32 {
 }
 
 /// VARINT	Represents an integer between -2^31 and 2^31-1 inclusive. Encoding follows the variable-length zig-zag encoding from Google Protocol Buffers.
-/// TODO: Implement VARINT
 
 #[allow(non_camel_case_types)]
-pub struct vi32(i32);
+pub struct vi32(pub i32);
+
+impl FromKafkaBytes for vi32 {
+    fn read(bytes: &mut Cursor<Bytes>) -> Result<Self, FromBytesError> {
+        Ok(vi32(varint::read_varint32(bytes)? as i32))
+    }
+}
+
+impl ToKafkaBytes for vi32 {
+    fn len_to_write(&self) -> usize {
+        varint::sizeof_varint(self.0 as u64)
+    }
+
+    fn write(&self, bytes: &mut BufMut) {
+        varint::write_varint(bytes, self.0 as u64)
+    }
+}
+
+impl From<i32> for vi32 {
+    fn from(v: i32) -> Self {
+        vi32(v)
+    }
+}
+
+impl From<vi32> for i32 {
+    fn from(v: vi32) -> Self {
+        v.0
+    }
+}
 
 /// VARLONG	Represents an integer between -2^63 and 2^63-1 inclusive. Encoding follows the variable-length zig-zag encoding from Google Protocol Buffers.
-/// TODO: Implement VARLONG
 
 #[allow(non_camel_case_types)]
-pub struct vi64(i64);
+pub struct vi64(pub i64);
+
+impl FromKafkaBytes for vi64 {
+    fn read(bytes: &mut Cursor<Bytes>) -> Result<Self, FromBytesError> {
+        Ok(vi64(varint::read_varint64(bytes)? as i64))
+    }
+}
+
+impl ToKafkaBytes for vi64 {
+    fn len_to_write(&self) -> usize {
+        varint::sizeof_varint(self.0 as u64)
+    }
+
+    fn write(&self, bytes: &mut BufMut) {
+        varint::write_varint(bytes, self.0 as u64)
+    }
+}
+
+impl From<i64> for vi64 {
+    fn from(v: i64) -> Self {
+        vi64(v)
+    }
+}
+
+impl From<vi64> for i64 {
+    fn from(v: vi64) -> Self {
+        v.0
+    }
+}
 
 /// STRING	Represents a sequence of characters. First the length N is given as an INT16. Then N bytes follow which are the UTF-8 encoding of the character sequence. Length must not be negative.
 #[derive(Eq, PartialEq)]
