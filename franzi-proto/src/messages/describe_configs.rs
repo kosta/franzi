@@ -1,4 +1,5 @@
-kafka_message!("DescribeConfigs Request (Version: 0) => [resources]
+kafka_message!(
+    "DescribeConfigs Request (Version: 0) => [resources]
   resources => resource_type resource_name [config_names]
     resource_type => INT8
     resource_name => STRING
@@ -8,23 +9,11 @@ Field 	Description
 resources	An array of config resources to be returned.
 resource_type	null
 resource_name	null
-config_names	null");
+config_names	null"
+);
 
-kafka_message!("DescribeConfigs Request (Version: 1) => [resources] include_synonyms
-  resources => resource_type resource_name [config_names]
-    resource_type => INT8
-    resource_name => STRING
-    config_names => STRING
-  include_synonyms => BOOLEAN
-
-Field 	Description
-resources	An array of config resources to be returned.
-resource_type	null
-resource_name	null
-config_names	null
-include_synonyms	null");
-
-kafka_message!("DescribeConfigs Request (Version: 2) => [resources] include_synonyms
+kafka_message!(
+    "DescribeConfigs Request (Version: 1) => [resources] include_synonyms
   resources => resource_type resource_name [config_names]
     resource_type => INT8
     resource_name => STRING
@@ -36,7 +25,24 @@ resources	An array of config resources to be returned.
 resource_type	null
 resource_name	null
 config_names	null
-include_synonyms	null");
+include_synonyms	null"
+);
+
+kafka_message!(
+    "DescribeConfigs Request (Version: 2) => [resources] include_synonyms
+  resources => resource_type resource_name [config_names]
+    resource_type => INT8
+    resource_name => STRING
+    config_names => STRING
+  include_synonyms => BOOLEAN
+
+Field 	Description
+resources	An array of config resources to be returned.
+resource_type	null
+resource_name	null
+config_names	null
+include_synonyms	null"
+);
 
 kafka_message!("DescribeConfigs Response (Version: 0) => throttle_time_ms [resources]
   throttle_time_ms => INT32

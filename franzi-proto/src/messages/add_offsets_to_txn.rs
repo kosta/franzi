@@ -1,4 +1,5 @@
-kafka_message!("AddOffsetsToTxn Request (Version: 0) => transactional_id producer_id producer_epoch group_id
+kafka_message!(
+    "AddOffsetsToTxn Request (Version: 0) => transactional_id producer_id producer_epoch group_id
   transactional_id => STRING
   producer_id => INT64
   producer_epoch => INT16
@@ -8,9 +9,11 @@ Field 	Description
 transactional_id	The transactional id corresponding to the transaction.
 producer_id	Current producer id in use by the transactional id.
 producer_epoch	Current epoch associated with the producer id.
-group_id	The unique group identifier");
+group_id	The unique group identifier"
+);
 
-kafka_message!("AddOffsetsToTxn Request (Version: 1) => transactional_id producer_id producer_epoch group_id
+kafka_message!(
+    "AddOffsetsToTxn Request (Version: 1) => transactional_id producer_id producer_epoch group_id
   transactional_id => STRING
   producer_id => INT64
   producer_epoch => INT16
@@ -20,7 +23,8 @@ Field 	Description
 transactional_id	The transactional id corresponding to the transaction.
 producer_id	Current producer id in use by the transactional id.
 producer_epoch	Current epoch associated with the producer id.
-group_id	The unique group identifier");
+group_id	The unique group identifier"
+);
 
 kafka_message!("AddOffsetsToTxn Response (Version: 0) => throttle_time_ms error_code
   throttle_time_ms => INT32

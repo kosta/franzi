@@ -1,4 +1,5 @@
-kafka_message!("DeleteAcls Request (Version: 0) => [filters]
+kafka_message!(
+    "DeleteAcls Request (Version: 0) => [filters]
   filters => resource_type resource_name principal host operation permission_type
     resource_type => INT8
     resource_name => NULLABLE_STRING
@@ -14,7 +15,8 @@ resource_name	The resource name filter
 principal	The ACL principal filter
 host	The ACL host filter
 operation	The ACL operation
-permission_type	The ACL permission type");
+permission_type	The ACL permission type"
+);
 
 kafka_message!("DeleteAcls Request (Version: 1) => [filters]
   filters => resource_type resource_name resource_pattern_type_filter principal host operation permission_type
@@ -97,4 +99,3 @@ principal	The ACL principal
 host	The ACL host
 operation	The ACL operation
 permission_type	The ACL permission type");
-

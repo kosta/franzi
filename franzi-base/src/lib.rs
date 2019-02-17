@@ -97,7 +97,7 @@ impl std::error::Error for Error {
             Error::FromBytesError => "error reading kafka message",
             Error::ToBytesError => "error writing kafka message",
             Error::Canceled => "response Canceled (connection closed)",
-            Error::ProtocolError(_) => "protocol error response"
+            Error::ProtocolError(_) => "protocol error response",
         }
     }
     fn cause(&self) -> Option<&dyn std::error::Error> {

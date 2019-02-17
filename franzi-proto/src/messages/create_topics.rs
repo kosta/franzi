@@ -110,7 +110,8 @@ config_value	Configuration value
 timeout	The time in ms to wait for a topic to be completely created on the controller node. Values <= 0 will trigger topic creation and return immediately
 validate_only	If this is true, the request will be validated, but the topic won't be created.");
 
-kafka_message!("CreateTopics Response (Version: 0) => [topic_errors]
+kafka_message!(
+    "CreateTopics Response (Version: 0) => [topic_errors]
   topic_errors => topic error_code
     topic => STRING
     error_code => INT16
@@ -118,9 +119,11 @@ kafka_message!("CreateTopics Response (Version: 0) => [topic_errors]
 Field 	Description
 topic_errors	An array of per topic error codes.
 topic	Name of topic
-error_code	Response error code");
+error_code	Response error code"
+);
 
-kafka_message!("CreateTopics Response (Version: 1) => [topic_errors]
+kafka_message!(
+    "CreateTopics Response (Version: 1) => [topic_errors]
   topic_errors => topic error_code error_message
     topic => STRING
     error_code => INT16
@@ -130,7 +133,8 @@ Field 	Description
 topic_errors	An array of per topic errors.
 topic	Name of topic
 error_code	Response error code
-error_message	Response error message");
+error_message	Response error message"
+);
 
 kafka_message!("CreateTopics Response (Version: 2) => throttle_time_ms [topic_errors]
   throttle_time_ms => INT32
