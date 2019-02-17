@@ -1,16 +1,23 @@
-kafka_message!("ApiVersions Request (Version: 0) =>
+kafka_message!(
+    "ApiVersions Request (Version: 0) =>
 
-Field 	Description");
+Field 	Description"
+);
 
-kafka_message!("ApiVersions Request (Version: 1) =>
+kafka_message!(
+    "ApiVersions Request (Version: 1) =>
 
-Field 	Description");
+Field 	Description"
+);
 
-kafka_message!("ApiVersions Request (Version: 2) =>
+kafka_message!(
+    "ApiVersions Request (Version: 2) =>
 
-Field 	Description");
+Field 	Description"
+);
 
-kafka_message!("ApiVersions Response (Version: 0) => error_code [api_versions]
+kafka_message!(
+    "ApiVersions Response (Version: 0) => error_code [api_versions]
   error_code => INT16
   api_versions => api_key min_version max_version
     api_key => INT16
@@ -22,7 +29,8 @@ error_code	Response error code
 api_versions	API versions supported by the broker.
 api_key	API key.
 min_version	Minimum supported version.
-max_version	Maximum supported version.");
+max_version	Maximum supported version."
+);
 
 kafka_message!("ApiVersions Response (Version: 1) => error_code [api_versions] throttle_time_ms
   error_code => INT16

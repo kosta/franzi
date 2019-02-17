@@ -1,4 +1,5 @@
-kafka_message!("EndTxn Request (Version: 0) => transactional_id producer_id producer_epoch transaction_result
+kafka_message!(
+    "EndTxn Request (Version: 0) => transactional_id producer_id producer_epoch transaction_result
   transactional_id => STRING
   producer_id => INT64
   producer_epoch => INT16
@@ -8,9 +9,11 @@ Field 	Description
 transactional_id	The transactional id corresponding to the transaction.
 producer_id	Current producer id in use by the transactional id.
 producer_epoch	Current epoch associated with the producer id.
-transaction_result	The result of the transaction (0 = ABORT, 1 = COMMIT)");
+transaction_result	The result of the transaction (0 = ABORT, 1 = COMMIT)"
+);
 
-kafka_message!("EndTxn Request (Version: 1) => transactional_id producer_id producer_epoch transaction_result
+kafka_message!(
+    "EndTxn Request (Version: 1) => transactional_id producer_id producer_epoch transaction_result
   transactional_id => STRING
   producer_id => INT64
   producer_epoch => INT16
@@ -20,7 +23,8 @@ Field 	Description
 transactional_id	The transactional id corresponding to the transaction.
 producer_id	Current producer id in use by the transactional id.
 producer_epoch	Current epoch associated with the producer id.
-transaction_result	The result of the transaction (0 = ABORT, 1 = COMMIT)");
+transaction_result	The result of the transaction (0 = ABORT, 1 = COMMIT)"
+);
 
 kafka_message!("EndTxn Response (Version: 0) => throttle_time_ms error_code
   throttle_time_ms => INT32

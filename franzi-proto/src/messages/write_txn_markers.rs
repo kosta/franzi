@@ -18,7 +18,8 @@ topic	Name of topic
 partitions	null
 coordinator_epoch	Epoch associated with the transaction state partition hosted by this transaction coordinator");
 
-kafka_message!("WriteTxnMarkers Response (Version: 0) => [transaction_markers]
+kafka_message!(
+    "WriteTxnMarkers Response (Version: 0) => [transaction_markers]
   transaction_markers => producer_id [topics]
     producer_id => INT64
     topics => topic [partitions]
@@ -34,4 +35,5 @@ topics	Errors per partition from writing markers.
 topic	Name of topic
 partitions	null
 partition	Topic partition id
-error_code	Response error code");
+error_code	Response error code"
+);

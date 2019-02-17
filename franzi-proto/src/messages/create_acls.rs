@@ -1,4 +1,5 @@
-kafka_message!("CreateAcls Request (Version: 0) => [creations]
+kafka_message!(
+    "CreateAcls Request (Version: 0) => [creations]
   creations => resource_type resource_name principal host operation permission_type
     resource_type => INT8
     resource_name => STRING
@@ -14,7 +15,8 @@ resource_name	The resource name
 principal	The ACL principal
 host	The ACL host
 operation	The ACL operation
-permission_type	The ACL permission type");
+permission_type	The ACL permission type"
+);
 
 kafka_message!("CreateAcls Request (Version: 1) => [creations]
   creations => resource_type resource_name resource_pattten_type principal host operation permission_type

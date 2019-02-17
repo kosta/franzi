@@ -1,4 +1,5 @@
-kafka_message!("AlterConfigs Request (Version: 0) => [resources] validate_only
+kafka_message!(
+    "AlterConfigs Request (Version: 0) => [resources] validate_only
   resources => resource_type resource_name [config_entries]
     resource_type => INT8
     resource_name => STRING
@@ -14,9 +15,11 @@ resource_name	null
 config_entries	null
 config_name	Configuration name
 config_value	Configuration value
-validate_only	null");
+validate_only	null"
+);
 
-kafka_message!("AlterConfigs Request (Version: 1) => [resources] validate_only
+kafka_message!(
+    "AlterConfigs Request (Version: 1) => [resources] validate_only
   resources => resource_type resource_name [config_entries]
     resource_type => INT8
     resource_name => STRING
@@ -32,7 +35,8 @@ resource_name	null
 config_entries	null
 config_name	Configuration name
 config_value	Configuration value
-validate_only	null");
+validate_only	null"
+);
 
 kafka_message!("AlterConfigs Response (Version: 0) => throttle_time_ms [resources]
   throttle_time_ms => INT32

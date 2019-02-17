@@ -30,7 +30,8 @@ Field 	Description
 topics	An array of topics to be deleted.
 timeout	The time in ms to wait for a topic to be completely deleted on the controller node. Values <= 0 will trigger topic deletion and return immediately");
 
-kafka_message!("DeleteTopics Response (Version: 0) => [topic_error_codes]
+kafka_message!(
+    "DeleteTopics Response (Version: 0) => [topic_error_codes]
   topic_error_codes => topic error_code
     topic => STRING
     error_code => INT16
@@ -38,7 +39,8 @@ kafka_message!("DeleteTopics Response (Version: 0) => [topic_error_codes]
 Field 	Description
 topic_error_codes	An array of per topic error codes.
 topic	Name of topic
-error_code	Response error code");
+error_code	Response error code"
+);
 
 kafka_message!("DeleteTopics Response (Version: 1) => throttle_time_ms [topic_error_codes]
   throttle_time_ms => INT32
