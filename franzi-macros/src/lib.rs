@@ -72,6 +72,40 @@ fn to_rust_type(field2is_array: &HashMap<&str, bool>, name: &str, field_type: &s
     }
 }
 
+#[derive(Default)]
+struct ParserState<'a> {
+    field2comment: HashMap<&'a str, String>,
+    field2is_array: HashMap<&'a str, bool>,
+    last_field: Option<&'a str>,
+}
+
+impl<'a> ParserState<'a> {
+fn parse_comment_line(&mut self, line: &'a str) {
+                let mut field_and_comment = line.trim().splitn(2, char::is_whitespace);
+            let field = field_and_comment.next().expect("field name").trim();
+            let comment = field_and_comment.next().expect("field comment").trim();
+            if field == "Field" && comment == "Description" {
+                return;
+            }
+            if !self.field2is_array.contains_key(&field) {
+                // eprintln!("last field: {:?}", last_field);
+                if let Some(last_field) = self.last_field {
+                    let last_value = self.field2comment
+                        .remove(&last_field)
+                        .expect("expected last field to exist");
+                    self.field2comment.insert(last_field, format!("{} {}", last_value, line));
+                } else {
+                    panic!(
+                        "Unexpected comment for field: {:?} comment: {:?}",
+                        field, comment
+                    );
+                }
+            }
+            self.field2comment.insert(field, comment.to_string());
+            self.last_field = Some(field);
+}
+}
+
 /// Generates rust structs, including `#[derive(Debug, Eq, PartialEq, FromKafkaBytes, ToKafkaBytes)]`
 /// for (potentially nested) [Kafka Protocol Message Spec](http://kafka.apache.org/protocol.html).
 ///
@@ -162,16 +196,15 @@ pub fn kafka_message(input: proc_macro::TokenStream) -> proc_macro::TokenStream 
 
     assert_eq!("=>", split.next().unwrap());
 
+    let mut state = ParserState::default();
     // remaining items on line are field names
-    let mut field2is_array = HashMap::new();
     let mut field2type = HashMap::new();
     let mut type2fields = HashMap::new();
-    let mut field2comment = HashMap::new();
     {
         let mut fields = Vec::new();
         for field_name in split {
             let (is_arr, field_name) = parse_field(field_name);
-            field2is_array.insert(field_name, is_arr);
+            state.field2is_array.insert(field_name, is_arr);
             fields.push(field_name);
         }
         // eprintln!("fields: {:?}", fields);
@@ -185,19 +218,7 @@ pub fn kafka_message(input: proc_macro::TokenStream) -> proc_macro::TokenStream 
             // eprintln!("Got an empty line");
             parsing_comments = true;
         } else if parsing_comments {
-            let mut field_and_comment = line.trim().splitn(2, char::is_whitespace);
-            let field = field_and_comment.next().expect("field name").trim();
-            let comment = field_and_comment.next().expect("field comment").trim();
-            if field == "Field" && comment == "Description" {
-                continue;
-            }
-            if !field2is_array.contains_key(&field) {
-                panic!(
-                    "Unexpected comment for field: {:?} comment: {:?}",
-                    field, comment
-                );
-            }
-            field2comment.insert(field, comment);
+            state.parse_comment_line(line);
         } else {
             spec_lines += 1;
             // remaining lines are in the form of fieldname => type or typename => fields
@@ -210,7 +231,7 @@ pub fn kafka_message(input: proc_macro::TokenStream) -> proc_macro::TokenStream 
                 // single field
                 if let Some(primitive_type) = primitive_type(fields_or_type[0]) {
                     // eprintln!("field {:?} has primitive type {:?}", name, primitive_type);
-                    let rust_type = to_rust_type(&field2is_array, name, primitive_type);
+                    let rust_type = to_rust_type(&state.field2is_array, name, primitive_type);
                     let existing = field2type.insert(name.to_string(), rust_type.clone());
                     if let Some(existing) = existing {
                         assert_eq!(
@@ -230,7 +251,7 @@ pub fn kafka_message(input: proc_macro::TokenStream) -> proc_macro::TokenStream 
             let mut fields = Vec::new();
             for field_name in fields_or_type {
                 let (is_arr, field_name) = parse_field(field_name);
-                field2is_array.insert(field_name, is_arr);
+                state.field2is_array.insert(field_name, is_arr);
                 fields.push(field_name);
             }
             type2fields.insert(subtype_name.clone(), fields);
@@ -252,8 +273,8 @@ pub fn kafka_message(input: proc_macro::TokenStream) -> proc_macro::TokenStream 
             let field_type = &field2type
                 .get(*field)
                 .unwrap_or_else(|| panic!("field2type[{:?}]", field));
-            let field_type = to_rust_type(&field2is_array, field, field_type);
-            let comment = field2comment
+            let field_type = to_rust_type(&state.field2is_array, field, field_type);
+            let comment = state.field2comment
                 .get(*field)
                 .unwrap_or_else(|| panic!("field2comment[{:?}]", field));
             lines.push(
