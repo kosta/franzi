@@ -6,6 +6,7 @@ extern crate franzi_macros;
 pub mod errors;
 pub mod header;
 pub mod messages;
+pub mod record;
 
 #[cfg(test)]
 mod tests {
