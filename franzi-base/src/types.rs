@@ -135,6 +135,7 @@ impl ToKafkaBytes for u32 {
 /// VARINT	Represents an integer between -2^31 and 2^31-1 inclusive. Encoding follows the variable-length zig-zag encoding from Google Protocol Buffers.
 
 #[allow(non_camel_case_types)]
+#[derive(Debug)]
 pub struct vi32(pub i32);
 
 impl FromKafkaBytes for vi32 {
@@ -168,6 +169,7 @@ impl From<vi32> for i32 {
 /// VARLONG	Represents an integer between -2^63 and 2^63-1 inclusive. Encoding follows the variable-length zig-zag encoding from Google Protocol Buffers.
 
 #[allow(non_camel_case_types)]
+#[derive(Debug)]
 pub struct vi64(pub i64);
 
 impl FromKafkaBytes for vi64 {
@@ -297,6 +299,40 @@ impl ToKafkaBytes for Bytes {
     }
 }
 
+/// Bytes prefixed by a varint lenght. Used in `Record` etc.
+#[derive(Debug)]
+pub struct VarintBytes(pub Bytes);
+
+impl FromKafkaBytes for VarintBytes {
+    fn read(bytes: &mut Cursor<Bytes>) -> Result<Self, FromBytesError> {
+        let len: i64 = vi64::read(bytes)?.into();
+        if len <= 0 {
+            return Ok(VarintBytes(Bytes::new()));
+        }
+        let len = len as usize;
+        if bytes.remaining() < len {
+            return Err(FromBytesError);
+        }
+        let pos = bytes.position() as usize;
+        let s = bytes.get_ref().slice(pos, pos + len);
+        bytes.advance(len);
+        Ok(VarintBytes(s))
+    }
+}
+
+impl ToKafkaBytes for VarintBytes {
+    fn len_to_write(&self) -> usize {
+        // TODO: overflow checks?
+        let len = self.0.len();
+        varint::sizeof_varint(len as u64) + len
+    }
+
+    fn write(&self, bytes: &mut BufMut) {
+        varint::write_varint(bytes, self.0.len() as u64);
+        bytes.put_slice(self.0.as_ref());
+    }
+}
+
 /// NULLABLE_BYTES	Represents a raw sequence of bytes or null. For non-null values, first the length N is given as an INT32. Then N bytes follow. A null value is encoded with length of -1 and there are no following bytes.
 
 impl FromKafkaBytes for Option<Bytes> {
@@ -331,11 +367,6 @@ impl ToKafkaBytes for Option<Bytes> {
         }
     }
 }
-
-/// RECORDS	Represents a sequence of Kafka records as NULLABLE_BYTES. For a detailed description of records see Message Sets.
-
-// TODO
-pub struct Records {}
 
 /// ARRAY	Represents a sequence of objects of a given type T. Type T can be either a primitive type (e.g. STRING) or a structure. First, the length N is given as an INT32. Then N instances of type T follow. A null array is represented with a length of -1. In protocol documentation an array of T instances is referred to as [T].
 
