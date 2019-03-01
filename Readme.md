@@ -57,7 +57,7 @@ forseeable futures:
 
 ## Etymology
 
-`Franzi` is a bavarian nickname for the female version of the name Franz, the first name of Mr. Kafka.
+`Franzi` is a bavarian diminuitive nickname of the name Franz, the first name of Mr. Kafka.
 
 Also, when pronounced wrong, it sounds like 'frenzy', which I find a bit funny.
 
