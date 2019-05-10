@@ -1,13 +1,10 @@
 // use bytes::Bytes;
-// use franzi_macros::kafka_message;
+use franzi_macros::implement_kafka_messages_from_file;
 // use std::io::Cursor;
 
 // kafka_message!("Foo");
 
-// #[test]
-// fn test_message() {
-//     let f: Foo = franzi_base::FromKafkaBytes::read(&mut Cursor::new(Bytes::from(&b""[..]))).unwrap();
-//     assert_eq!(franzi_base::ToKafkaBytes::len_to_write(&f), 0);
-//     assert_eq!(format!("foo: {:?}", f), "foo: Foo");
-//     assert_eq!(f, Foo{});
-// }
+#[test]
+fn test_protocol_html() {
+    let ts = implement_kafka_messages_from_file("protocol.html");
+}

@@ -10,6 +10,24 @@ use syn::{
     parse_macro_input, parse_quote, Data, DeriveInput, Fields, GenericParam, Generics, Index,
 };
 
+#[proc_macro]
+pub fn implement_kafka_messages_from_file(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
+    // TODO: Is there a better way to get a the string literal out of a token?
+
+    let mut tokens: Vec<proc_macro::TokenTree> = input.into_iter().collect();
+    assert_eq!(tokens.len(), 1);
+
+    let filename = match tokens.remove(0) {
+        proc_macro::TokenTree::Literal(s) => s,
+        _ => panic!("Expected exactly one string literal"),
+    };
+
+    let filename = filename.to_string();
+    let filename = filename[1..filename.len() - 1].to_string();
+
+    proc_macro::TokenStream::new()
+}
+
 fn add_derives(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     let input: TokenStream = input.into();
     let output = quote! {
@@ -19,7 +37,7 @@ fn add_derives(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     output.into()
 }
 
-fn type_comment(typename: &str, input_str: &str) -> TokenStream {
+fn type_comment(typename: &str, filename: &str) -> TokenStream {
     let typename = format!("{}\n", typename);
     let inputs = input_str.lines().map(ToString::to_string);
     quote! {
