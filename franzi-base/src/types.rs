@@ -23,7 +23,7 @@ impl ToKafkaBytes for bool {
         size_of::<Self>()
     }
 
-    fn write(&self, bytes: &mut BufMut) {
+    fn write(&self, bytes: &mut dyn BufMut) {
         bytes.put_u8(if *self { 1 } else { 0 });
     }
 }
@@ -44,7 +44,7 @@ impl ToKafkaBytes for i8 {
         size_of::<Self>()
     }
 
-    fn write(&self, bytes: &mut BufMut) {
+    fn write(&self, bytes: &mut dyn BufMut) {
         bytes.put_i8(*self);
     }
 }
@@ -65,7 +65,7 @@ impl ToKafkaBytes for i16 {
         size_of::<Self>()
     }
 
-    fn write(&self, bytes: &mut BufMut) {
+    fn write(&self, bytes: &mut dyn BufMut) {
         bytes.put_i16_be(*self)
     }
 }
@@ -86,7 +86,7 @@ impl ToKafkaBytes for i32 {
         size_of::<Self>()
     }
 
-    fn write(&self, bytes: &mut BufMut) {
+    fn write(&self, bytes: &mut dyn BufMut) {
         bytes.put_i32_be(*self)
     }
 }
@@ -106,7 +106,7 @@ impl ToKafkaBytes for i64 {
         size_of::<Self>()
     }
 
-    fn write(&self, bytes: &mut BufMut) {
+    fn write(&self, bytes: &mut dyn BufMut) {
         bytes.put_i64_be(*self)
     }
 }
@@ -127,7 +127,7 @@ impl ToKafkaBytes for u32 {
         size_of::<Self>()
     }
 
-    fn write(&self, bytes: &mut BufMut) {
+    fn write(&self, bytes: &mut dyn BufMut) {
         bytes.put_u32_be(*self)
     }
 }
@@ -149,7 +149,7 @@ impl ToKafkaBytes for vi32 {
         varint::sizeof_varint(self.0 as u64)
     }
 
-    fn write(&self, bytes: &mut BufMut) {
+    fn write(&self, bytes: &mut dyn BufMut) {
         varint::write_varint(bytes, self.0 as u64)
     }
 }
@@ -183,7 +183,7 @@ impl ToKafkaBytes for vi64 {
         varint::sizeof_varint(self.0 as u64)
     }
 
-    fn write(&self, bytes: &mut BufMut) {
+    fn write(&self, bytes: &mut dyn BufMut) {
         varint::write_varint(bytes, self.0 as u64)
     }
 }
@@ -237,7 +237,7 @@ impl ToKafkaBytes for KafkaString {
         size_of::<i16>() + self.0.len()
     }
 
-    fn write(&self, bytes: &mut BufMut) {
+    fn write(&self, bytes: &mut dyn BufMut) {
         // TODO: Overflow check?
         bytes.put_i16_be(self.0.len() as i16);
         bytes.put_slice(self.0.as_ref());
@@ -271,7 +271,7 @@ impl ToKafkaBytes for Option<KafkaString> {
         }
     }
 
-    fn write(&self, bytes: &mut BufMut) {
+    fn write(&self, bytes: &mut dyn BufMut) {
         match self {
             None => bytes.put_i16_be(-1),
             Some(s) => s.write(bytes),
@@ -292,7 +292,7 @@ impl ToKafkaBytes for Bytes {
         size_of::<i32>() + self.len()
     }
 
-    fn write(&self, bytes: &mut BufMut) {
+    fn write(&self, bytes: &mut dyn BufMut) {
         // TODO: Overflow check?
         bytes.put_i32_be(self.len() as i32);
         bytes.put_slice(self.as_ref());
@@ -327,7 +327,7 @@ impl ToKafkaBytes for VarintBytes {
         varint::sizeof_varint(len as u64) + len
     }
 
-    fn write(&self, bytes: &mut BufMut) {
+    fn write(&self, bytes: &mut dyn BufMut) {
         varint::write_varint(bytes, self.0.len() as u64);
         bytes.put_slice(self.0.as_ref());
     }
@@ -360,7 +360,7 @@ impl ToKafkaBytes for Option<Bytes> {
         }
     }
 
-    fn write(&self, bytes: &mut BufMut) {
+    fn write(&self, bytes: &mut dyn BufMut) {
         match self {
             None => bytes.put_i32_be(-1),
             Some(s) => s.write(bytes),
@@ -396,7 +396,7 @@ impl<T: ToKafkaBytes> ToKafkaBytes for Option<Vec<T>> {
             }
     }
 
-    fn write(&self, bytes: &mut BufMut) {
+    fn write(&self, bytes: &mut dyn BufMut) {
         // TODO: Overflow check?
         match self {
             None => bytes.put_i32_be(-1),

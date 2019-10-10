@@ -1,119 +1,107 @@
 //! Kafka client
 //! Note: This needs better type tetris, I'm really not happy how this is working out.
 
+#![forbid(unsafe_code)]
+
 use byteorder::ByteOrder;
 use bytes::{BufMut, Bytes, BytesMut};
+use chashmap::CHashMap;
 use franzi_base::types::KafkaString;
-use franzi_base::{Error, FromKafkaBytes, KafkaRequest, ToKafkaBytes};
+use franzi_base::{Error as KafkaError, FromKafkaBytes, KafkaRequest, ToKafkaBytes};
 use franzi_proto::header::RequestHeader;
-use futures::sync::{mpsc, oneshot};
-use futures::{future, try_ready, Async, AsyncSink, Future, Poll, Sink, StartSend, Stream};
-use std::collections::HashMap;
+use futures::channel::oneshot;
+use futures::{
+    future::TryFutureExt, task::Context, Future, Poll, Sink, SinkExt, Stream, StreamExt,
+};
+use std::io;
 use std::net::SocketAddr;
-use std::sync::atomic::AtomicIsize;
-use std::sync::atomic::Ordering::Relaxed;
+use std::pin::Pin;
 use std::sync::Arc;
-use tokio::codec::{Decoder, Encoder, Framed};
+use tokio::codec::{Decoder, Encoder, FramedRead, FramedWrite};
 use tokio::net::tcp::TcpStream;
-use tokio::prelude::stream::{SplitSink, SplitStream};
+use tokio_io::split::{ReadHalf, WriteHalf};
 
-// TODO: Find something more efficient?
-pub type Correlation = (i32, oneshot::Sender<Bytes>);
+pub struct KafkaProtocolRequest {
+    payload: Bytes,
+    correlation_id: i32,
+    response: oneshot::Sender<Bytes>,
+}
 
-pub type BrokerConnection<St, Et, Si, Ei> = (BrokerClient<Si, Ei>, BrokerResponses<St, Et>);
+pub type BrokerConnection<Si, Ei, St> = (BrokerSink<Si, Ei>, BrokerResponses<St>);
 
 pub type BrokerTcpConnection = BrokerConnection<
-    SplitStream<Framed<TcpStream, ConnectionCodec>>,
-    std::io::Error,
-    SplitSink<Framed<TcpStream, ConnectionCodec>>,
-    std::io::Error,
+    FramedWrite<WriteHalf<TcpStream>, ConnectionCodec>,
+    io::Error,
+    FramedRead<ReadHalf<TcpStream>, ConnectionCodec>,
 >;
 
-pub struct BrokerClient<Si, E>
+pub struct BrokerSink<Si, Ei>
 where
-    Si: futures::Sink<SinkItem = Bytes, SinkError = E>,
+    Si: Sink<Bytes, Error = Ei> + Unpin,
 {
     sink: Si,
-    correlations_tx: mpsc::UnboundedSender<Correlation>,
+    correlation_ids: Arc<CHashMap<i32, oneshot::Sender<Bytes>>>,
+    next_correlation_id: i32,
 }
 
-pub struct BrokerResponses<St, E>
+pub struct BrokerResponses<St>
 where
-    St: futures::Stream<Item = BytesMut, Error = E>,
+    St: Stream<Item = Result<BytesMut, io::Error>>,
 {
     stream: St,
-    correlations_rx: mpsc::UnboundedReceiver<Correlation>,
-    correlations: HashMap<i32, oneshot::Sender<Bytes>>,
-    correlations_closed: bool,
+    correlation_ids: Arc<CHashMap<i32, oneshot::Sender<Bytes>>>,
 }
 
-pub fn connect(
-    addr: &SocketAddr,
-) -> impl Future<Item = BrokerTcpConnection, Error = std::io::Error> {
-    TcpStream::connect(addr).map(new_broker_connection)
+// TODO: DNS Resolution!
+pub async fn connect(addr: &SocketAddr) -> Result<BrokerTcpConnection, io::Error> {
+    Ok(new_broker_connection(TcpStream::connect(addr).await?))
 }
 
+// TOOD: Make this testable by NOT using a TcpStream directly...
 pub fn new_broker_connection(sock: TcpStream) -> BrokerTcpConnection {
-    let correlations = mpsc::unbounded();
-    let (sink, stream) = Framed::new(sock, ConnectionCodec()).split();
+    let correlation_ids = Arc::new(CHashMap::new());
+    let (read, write) = tokio::io::split(sock);
+    let sink = FramedWrite::new(write, ConnectionCodec());
+    let stream = FramedRead::new(read, ConnectionCodec());
     (
-        BrokerClient {
+        BrokerSink {
             sink,
-            correlations_tx: correlations.0,
+            correlation_ids: correlation_ids.clone(),
+            next_correlation_id: 0,
         },
         BrokerResponses {
             stream,
-            correlations_rx: correlations.1,
-            correlations: Default::default(),
-            correlations_closed: false,
+            correlation_ids,
         },
     )
 }
 
-/// Shared broker client that feeds requests into an unbounded channel
-/// Will be removed once I have a better understanding how this API should look
-/// and multi-broker support is implemented
-#[derive(Clone)]
-pub struct SharedBrokerClient {
-    tx: mpsc::UnboundedSender<(i32, oneshot::Sender<Bytes>, Bytes)>,
-    next_correlation_id: Arc<AtomicIsize>,
-    client_id: Bytes,
-}
-
-impl SharedBrokerClient {
-    pub fn connect(
-        addr: &SocketAddr,
-    ) -> impl Future<Item = SharedBrokerClient, Error = std::io::Error> {
-        connect(addr).map(|(client, resp)| {
-            let (tx, rx) = mpsc::unbounded();
-            // TODO: Is this the right "spawn"?
-            // TOOD: Error handling
-            tokio::spawn(
-                rx.map_err(|()| -> std::io::Error { unreachable!() })
-                    .forward(client)
-                    .map(|_| ())
-                    .map_err(|e| Err(e).expect("franzi client error")),
-            );
-            tokio::spawn(resp.map_err(|e| Err(e).expect("franzi repsonse error")));
-            SharedBrokerClient {
-                tx,
-                next_correlation_id: Arc::new(AtomicIsize::new(1)),
-                client_id: String::from("franzi").into(),
-            }
-        })
-    }
-
-    pub fn send<Req: KafkaRequest>(
-        &self,
+impl<Si, Ei> BrokerSink<Si, Ei>
+where
+    Si: Sink<Bytes, Error = Ei> + Unpin,
+    KafkaError: std::convert::From<Ei>,
+{
+    #[allow(clippy::wrong_self_convention)] // TODO: Move to Request?
+    fn to_kafka_protocol_request<Req: KafkaRequest>(
+        &mut self,
         req: Req,
-    ) -> impl Future<Item = Req::Response, Error = Error> {
+        client_id: Bytes,
+    ) -> (
+        KafkaProtocolRequest,
+        impl Future<Output = Result<Req::Response, KafkaError>>,
+    ) {
+        // Note: if this message is dropped, these is a "gap" in the correlation_ids, but that should be ok
+        let correlation_id = self.next_correlation_id;
+        // Overflow is ok, we just assume the old messages are already processed and there are no conv
+        self.next_correlation_id = self.next_correlation_id.wrapping_add(1);
+
         //turn request into Bytes
         let req_header = RequestHeader {
             api_key: req.api_key(),
             api_version: req.api_version(),
-            // TODO: Check for overflow
-            correlation_id: self.next_correlation_id.fetch_add(1, Relaxed) as i32,
-            client_id: Some(KafkaString(self.client_id.clone())),
+            correlation_id,
+            // TODO: Dont clone() here
+            client_id: Some(KafkaString(client_id)),
         };
 
         let len = req_header.len_to_write() + req.len_to_write();
@@ -123,91 +111,87 @@ impl SharedBrokerClient {
         req.write(&mut buf);
 
         let (tx, rx) = oneshot::channel();
-        self.tx
-            .unbounded_send((req_header.correlation_id, tx, buf.freeze()))
-            .expect("SharedBrokerClient: Closed channel");
-        rx.map_err(Error::from).and_then(|buf| {
-            let mut buf = std::io::Cursor::new(buf);
-            future::result(Req::Response::read(&mut buf).map_err(Error::from))
-        })
+        (
+            KafkaProtocolRequest {
+                payload: buf.freeze(),
+                correlation_id,
+                response: tx,
+            },
+            rx.map_err(|e| e.into()).and_then(|buf| {
+                async {
+                    // Note: async because and_then expects a Future...
+                    // In futures 0.1 this would have been a future::ok(...)
+                    let mut buf = io::Cursor::new(buf);
+                    Req::Response::read(&mut buf).map_err(|e| e.into())
+                }
+            }),
+        )
+    }
+
+    /// Send a single message through this BrokerConnection
+    /// Note: This uses SinkExt::send, so if you're using multiple items, the
+    /// caveat of batching together multiple messages and using poll_ready/start_send/poll_flush
+    pub async fn send_one<Req: KafkaRequest>(
+        &mut self,
+        req: Req,
+        client_id: Bytes, //TODO: Atomic?
+    ) -> Result<Req::Response, KafkaError> {
+        let (request, response) = self.to_kafka_protocol_request(req, client_id);
+        self.send(request).await?;
+        response.await
     }
 }
 
-impl<Si, Ei> Sink for BrokerClient<Si, Ei>
+impl<Si, Ei> Sink<KafkaProtocolRequest> for BrokerSink<Si, Ei>
 where
-    Si: Sink<SinkItem = Bytes, SinkError = Ei>,
+    Si: Sink<Bytes, Error = Ei> + Unpin,
 {
-    // TODO: These types don't make sense at all
-    type SinkItem = (i32, oneshot::Sender<Bytes>, Bytes); // This should be KafkaRequest?
-    type SinkError = Ei; // This should be KafkaError?
+    type Error = Ei;
 
-    fn start_send(&mut self, item: Self::SinkItem) -> StartSend<Self::SinkItem, Self::SinkError> {
-        match self.sink.start_send(item.2) {
-            Ok(AsyncSink::Ready) => (),
-            Ok(AsyncSink::NotReady(v)) => return Ok(AsyncSink::NotReady((item.0, item.1, v))),
-            // pass along errors
-            Err(e) => return Err(e),
-        };
-        // TOOD: Error handling?!
-        self.correlations_tx
-            .unbounded_send((item.0, item.1))
-            .expect("correlations channel closed");
-        Ok(AsyncSink::Ready)
+    fn poll_ready(self: Pin<&mut Self>, cx: &mut Context) -> Poll<Result<(), Self::Error>> {
+        Pin::new(&mut self.get_mut().sink).poll_ready(cx)
     }
 
-    fn poll_complete(&mut self) -> Poll<(), Self::SinkError> {
-        self.sink.poll_complete()
+    fn start_send(self: Pin<&mut Self>, item: KafkaProtocolRequest) -> Result<(), Self::Error> {
+        self.correlation_ids
+            .insert(item.correlation_id, item.response);
+        Pin::new(&mut self.get_mut().sink).start_send(item.payload)
+    }
+
+    fn poll_flush(self: Pin<&mut Self>, cx: &mut Context) -> Poll<Result<(), Self::Error>> {
+        Pin::new(&mut self.get_mut().sink).poll_flush(cx)
+    }
+
+    fn poll_close(self: Pin<&mut Self>, cx: &mut Context) -> Poll<Result<(), Self::Error>> {
+        Pin::new(&mut self.get_mut().sink).poll_close(cx)
     }
 }
 
-impl<St, Et> Future for BrokerResponses<St, Et>
+impl<St> BrokerResponses<St>
 where
-    St: futures::Stream<Item = BytesMut, Error = Et>,
+    St: Stream<Item = Result<BytesMut, io::Error>> + Unpin,
 {
-    type Item = ();
-    type Error = Et;
-
-    fn poll(&mut self) -> Poll<(), Et> {
+    pub async fn run(mut self) -> Result<(), io::Error> {
         loop {
-            // first, read any new correlation ids that we might need
-            while !self.correlations_closed {
-                match self.correlations_rx.poll() {
-                    Ok(Async::Ready(Some((id, chan)))) => {
-                        self.correlations.insert(id, chan);
-                    }
-                    Ok(Async::Ready(None)) => {
-                        // Correlations channel is closed, but continue to read tcp stream as long as there are outstanding requests
-                        self.correlations_closed = true;
-                    }
-                    Ok(Async::NotReady) => break,
-                    Err(()) => unreachable!("BrokerResponse got mpsc channel error"),
-                };
-            }
-
-            let mut buf = match try_ready!(self.stream.poll()) {
+            let mut buf = match self.stream.next().await {
                 Some(v) => v,
-                None => return Ok(Async::Ready(())),
-            };
+                None => break,
+            }?;
 
             // read correlation id (TODO: Use ResponseHeader instead?)
             let correlation_id = byteorder::NetworkEndian::read_i32(buf.as_ref());
             buf.advance(4);
 
-            // TODO: Turn into error
-            // TODO: Is this a race condition?
+            // TODO: Turn into error? Log this?
             let response_chan = self
-                .correlations
+                .correlation_ids
                 .remove(&correlation_id)
                 .expect("BrokerResponse: got unknown correlation id in response");
 
             // ignore send errors to response_chan. If the recipient is no longer interested, we're neither.
             let _ = response_chan.send(buf.freeze());
-
-            if self.correlations_closed && self.correlations.is_empty() {
-                // No remaining outstanding requests
-                return Ok(Async::Ready(()));
-            }
         }
+        Ok(())
     }
 }
 
@@ -216,7 +200,7 @@ pub struct ConnectionCodec();
 impl Encoder for ConnectionCodec {
     // TODO: Is there a better way than this hack?
     type Item = Bytes;
-    type Error = std::io::Error;
+    type Error = io::Error;
 
     fn encode(&mut self, req: Self::Item, buf: &mut BytesMut) -> Result<(), Self::Error> {
         buf.reserve(req.len());
@@ -227,7 +211,7 @@ impl Encoder for ConnectionCodec {
 
 impl Decoder for ConnectionCodec {
     type Item = BytesMut;
-    type Error = std::io::Error;
+    type Error = io::Error;
 
     fn decode(&mut self, buf: &mut BytesMut) -> Result<Option<Self::Item>, Self::Error> {
         if buf.len() < 4 {
