@@ -2,6 +2,8 @@
 // and https://github.com/tafia/quick-protobuf/blob/4a7a2f19ba0b12fadd0744f5cdf45e60a30259a0/quick-protobuf/src/sizeofs.rs
 // TODO: Check with @tafia (Johann Tuffe) regarding license
 
+#![allow(ellipsis_inclusive_range_patterns)]
+
 use std::io::Cursor;
 use std::mem::size_of;
 
@@ -147,7 +149,7 @@ pub fn sizeof_varint(v: u64) -> usize {
 }
 
 #[inline(always)]
-pub fn write_varint(bytes: &mut BufMut, mut v: u64) {
+pub fn write_varint(bytes: &mut dyn BufMut, mut v: u64) {
     while v > 0x7F {
         bytes.put_u8(((v as u8) & 0x7F) | 0x80);
         v >>= 7;
