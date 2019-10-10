@@ -80,30 +80,32 @@ struct ParserState<'a> {
 }
 
 impl<'a> ParserState<'a> {
-fn parse_comment_line(&mut self, line: &'a str) {
-                let mut field_and_comment = line.trim().splitn(2, char::is_whitespace);
-            let field = field_and_comment.next().expect("field name").trim();
-            let comment = field_and_comment.next().expect("field comment").trim();
-            if field == "Field" && comment == "Description" {
-                return;
+    fn parse_comment_line(&mut self, line: &'a str) {
+        let mut field_and_comment = line.trim().splitn(2, char::is_whitespace);
+        let field = field_and_comment.next().expect("field name").trim();
+        let comment = field_and_comment.next().expect("field comment").trim();
+        if field == "Field" && comment == "Description" {
+            return;
+        }
+        if !self.field2is_array.contains_key(&field) {
+            // eprintln!("last field: {:?}", last_field);
+            if let Some(last_field) = self.last_field {
+                let last_value = self
+                    .field2comment
+                    .remove(&last_field)
+                    .expect("expected last field to exist");
+                self.field2comment
+                    .insert(last_field, format!("{} {}", last_value, line));
+            } else {
+                panic!(
+                    "Unexpected comment for field: {:?} comment: {:?}",
+                    field, comment
+                );
             }
-            if !self.field2is_array.contains_key(&field) {
-                // eprintln!("last field: {:?}", last_field);
-                if let Some(last_field) = self.last_field {
-                    let last_value = self.field2comment
-                        .remove(&last_field)
-                        .expect("expected last field to exist");
-                    self.field2comment.insert(last_field, format!("{} {}", last_value, line));
-                } else {
-                    panic!(
-                        "Unexpected comment for field: {:?} comment: {:?}",
-                        field, comment
-                    );
-                }
-            }
-            self.field2comment.insert(field, comment.to_string());
-            self.last_field = Some(field);
-}
+        }
+        self.field2comment.insert(field, comment.to_string());
+        self.last_field = Some(field);
+    }
 }
 
 /// Generates rust structs, including `#[derive(Debug, Eq, PartialEq, FromKafkaBytes, ToKafkaBytes)]`
@@ -274,7 +276,8 @@ pub fn kafka_message(input: proc_macro::TokenStream) -> proc_macro::TokenStream 
                 .get(*field)
                 .unwrap_or_else(|| panic!("field2type[{:?}]", field));
             let field_type = to_rust_type(&state.field2is_array, field, field_type);
-            let comment = state.field2comment
+            let comment = state
+                .field2comment
                 .get(*field)
                 .unwrap_or_else(|| panic!("field2comment[{:?}]", field));
             lines.push(
