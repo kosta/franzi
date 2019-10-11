@@ -11,7 +11,7 @@ use franzi_base::{Error as KafkaError, FromKafkaBytes, KafkaRequest, ToKafkaByte
 use franzi_proto::header::RequestHeader;
 use futures::channel::oneshot;
 use futures::{
-    future::TryFutureExt, task::Context, Future, Poll, Sink, SinkExt, Stream, StreamExt,
+    task::Context, Future, Poll, Sink, SinkExt, Stream, StreamExt,
 };
 use std::io;
 use std::net::SocketAddr;
@@ -117,14 +117,11 @@ where
                 correlation_id,
                 response: tx,
             },
-            rx.map_err(|e| e.into()).and_then(|buf| {
-                async {
-                    // Note: async because and_then expects a Future...
-                    // In futures 0.1 this would have been a future::ok(...)
-                    let mut buf = io::Cursor::new(buf);
-                    Req::Response::read(&mut buf).map_err(|e| e.into())
-                }
-            }),
+            async {
+                let buf = rx.await?;
+                let mut buf = io::Cursor::new(buf);
+                Req::Response::read(&mut buf).map_err(|e| e.into())
+            },
         )
     }
 
