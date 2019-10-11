@@ -63,8 +63,8 @@ pub enum Error {
     FromBytesError,
     ToBytesError,
     Canceled,
-    ProtocolError(i16),
-    Io(std::io::Error),
+    Protocol(i16),
+    Io(io::Error),
     Utf8(std::str::Utf8Error),
 }
 
@@ -86,8 +86,8 @@ impl From<Canceled> for Error {
     }
 }
 
-impl From<std::io::Error> for Error {
-    fn from(e: std::io::Error) -> Self {
+impl From<io::Error> for Error {
+    fn from(e: io::Error) -> Self {
         Error::Io(e)
     }
 }
@@ -101,7 +101,7 @@ impl From<std::str::Utf8Error> for Error {
 impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
-            Error::ProtocolError(code) => write!(f, "protocol error response {}", code),
+            Error::Protocol(code) => write!(f, "protocol error response {}", code),
             _ => write!(f, "{}", std::error::Error::description(self)),
         }
     }
@@ -113,8 +113,8 @@ impl std::error::Error for Error {
             Error::FromBytesError => "error reading kafka message",
             Error::ToBytesError => "error writing kafka message",
             Error::Canceled => "response Canceled (connection closed)",
-            Error::ProtocolError(_) => "protocol error response",
-            Error::IoError(e) => e.description(),
+            Error::Protocol(_) => "protocol error response",
+            Error::Io(e) => e.description(),
             Error::Utf8(_) => "utf8 error",
         }
     }
