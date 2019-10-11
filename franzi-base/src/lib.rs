@@ -5,8 +5,9 @@ pub mod types;
 pub(crate) mod varint;
 
 use bytes::{BufMut, Bytes};
-use futures::sync::oneshot::Canceled;
+use futures::channel::oneshot::Canceled;
 use std::fmt;
+use std::io;
 use std::io::Cursor;
 
 #[derive(Debug)]
@@ -34,7 +35,7 @@ pub trait ToKafkaBytes {
     fn len_to_write(&self) -> usize;
 
     /// panics if there is not enough capacity in the Buffer
-    fn write(&self, bytes: &mut BufMut);
+    fn write(&self, bytes: &mut dyn BufMut);
 }
 
 /// Blanket impl so that you can pass an &ToKafkaBytes to an Framed/Encoder
@@ -43,7 +44,7 @@ impl<'a, T: ToKafkaBytes> ToKafkaBytes for &'a T {
         (*self).len_to_write()
     }
 
-    fn write(&self, bytes: &mut BufMut) {
+    fn write(&self, bytes: &mut dyn BufMut) {
         (*self).write(bytes)
     }
 }
@@ -113,7 +114,7 @@ impl std::error::Error for Error {
             Error::ToBytesError => "error writing kafka message",
             Error::Canceled => "response Canceled (connection closed)",
             Error::ProtocolError(_) => "protocol error response",
-            Error::Io(_) => "io error",
+            Error::IoError(e) => e.description(),
             Error::Utf8(_) => "utf8 error",
         }
     }

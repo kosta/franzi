@@ -8,7 +8,9 @@ edition = "2018"
 franzi-base = { path = "../franzi-base" }
 franzi-proto = { path = "../franzi-proto" }
 bytes = "0.4.11"
-tokio = "0.1"
-futures = "0.1"
+tokio = "0.2.0-alpha.6"
+tokio-io = "0.2.0-alpha.6"
+futures-preview = "0.3.0-alpha.19"
 byteorder = "1.2.7"
 rand = "0.6.5"
+chashmap = "2.2.2"
