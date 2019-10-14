@@ -14,12 +14,14 @@ use futures::{
     task::Context, Future, Poll, Sink, SinkExt, Stream, StreamExt,
 };
 use std::io;
-use std::net::SocketAddr;
 use std::pin::Pin;
 use std::sync::Arc;
 use tokio::codec::{Decoder, Encoder, FramedRead, FramedWrite};
-use tokio::net::tcp::TcpStream;
-use tokio_io::split::{ReadHalf, WriteHalf};
+use tokio::net::{
+    tcp::TcpStream,
+};
+use tokio_net::ToSocketAddrs;
+use tokio_io::{AsyncRead, AsyncWrite, split::{ReadHalf, WriteHalf}};
 
 pub struct KafkaProtocolRequest {
     payload: Bytes,
@@ -27,13 +29,12 @@ pub struct KafkaProtocolRequest {
     response: oneshot::Sender<Bytes>,
 }
 
-pub type BrokerConnection<Si, Ei, St> = (BrokerSink<Si, Ei>, BrokerResponses<St>);
+pub type BrokerConnection<Si, St> = (
+    BrokerSink<FramedWrite<WriteHalf<Si>, ConnectionCodec>, io::Error>,
+    BrokerResponses<FramedRead<ReadHalf<St>, ConnectionCodec>>,
+);
 
-pub type BrokerTcpConnection = BrokerConnection<
-    FramedWrite<WriteHalf<TcpStream>, ConnectionCodec>,
-    io::Error,
-    FramedRead<ReadHalf<TcpStream>, ConnectionCodec>,
->;
+pub type BrokerTcpConnection = BrokerConnection<TcpStream, TcpStream>;
 
 pub struct BrokerSink<Si, Ei>
 where
@@ -53,14 +54,13 @@ where
 }
 
 // TODO: DNS Resolution!
-pub async fn connect(addr: &SocketAddr) -> Result<BrokerTcpConnection, io::Error> {
-    Ok(new_broker_connection(TcpStream::connect(addr).await?))
+pub async fn connect<A: ToSocketAddrs>(addr: A) -> Result<BrokerTcpConnection, io::Error> {
+    Ok(new_broker_connection(tokio::io::split(TcpStream::connect(addr).await?)))
 }
 
 // TOOD: Make this testable by NOT using a TcpStream directly...
-pub fn new_broker_connection(sock: TcpStream) -> BrokerTcpConnection {
+pub fn new_broker_connection<T: AsyncRead + AsyncWrite>((read, write): (ReadHalf<T>, WriteHalf<T>)) -> BrokerConnection<T, T> {
     let correlation_ids = Arc::new(CHashMap::new());
-    let (read, write) = tokio::io::split(sock);
     let sink = FramedWrite::new(write, ConnectionCodec());
     let stream = FramedRead::new(read, ConnectionCodec());
     (

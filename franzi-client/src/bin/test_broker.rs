@@ -13,7 +13,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let client_id: Bytes = b"franzi_test_client"[..].into();
 
     let (mut client, responses) =
-        franzi_client::connect(&"[::1]:9092".parse::<SocketAddr>()?).await?;
+        franzi_client::broker::connect(&"[::1]:9092".parse::<SocketAddr>()?).await?;
     tokio::spawn(async {
         responses
             .run()

@@ -5,7 +5,12 @@ pub mod types;
 pub(crate) mod varint;
 
 use bytes::{BufMut, Bytes};
-use futures::channel::oneshot::Canceled;
+use futures::{
+    channel::{
+        mpsc::SendError,
+        oneshot::Canceled,
+    },
+};
 use std::fmt;
 use std::io;
 use std::io::Cursor;
@@ -63,6 +68,7 @@ pub enum Error {
     FromBytesError,
     ToBytesError,
     Canceled,
+    SendError,
     Protocol(i16),
     Io(io::Error),
     Utf8(std::str::Utf8Error),
@@ -83,6 +89,12 @@ impl From<ToBytesError> for Error {
 impl From<Canceled> for Error {
     fn from(_: Canceled) -> Self {
         Error::Canceled
+    }
+}
+
+impl From<SendError> for Error {
+    fn from(_: SendError) -> Self {
+        Error::SendError
     }
 }
 
@@ -113,6 +125,7 @@ impl std::error::Error for Error {
             Error::FromBytesError => "error reading kafka message",
             Error::ToBytesError => "error writing kafka message",
             Error::Canceled => "response Canceled (connection closed)",
+            Error::SendError => "broker channel closed (connection closed)",
             Error::Protocol(_) => "protocol error response",
             Error::Io(e) => e.description(),
             Error::Utf8(_) => "utf8 error",
