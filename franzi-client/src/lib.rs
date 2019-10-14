@@ -1,3 +1,4 @@
+use debug_stub_derive::DebugStub;
 use franzi_base::Error as KafkaError;
 use franzi_proto::messages::metadata::MetadataRequestV0;
 use futures::{channel::mpsc, future, Future, Sink, SinkExt, StreamExt};
@@ -20,67 +21,68 @@ pub struct BrokerInfo {
     pub rack: Option<String>,
 }
 
-type KafkaProtocolRequestSender = mpsc::Sender<broker::KafkaProtocolRequest>;
 type FromSendError = fn(mpsc::SendError) -> KafkaError;
-// type BrokerChannel = futures::Sink::SinkMapErr<Error=KafkaError>;
+type BrokerChannel = futures::sink::SinkMapErr<mpsc::Sender<broker::KafkaProtocolRequest>, FromSendError>;
 
-#[derive(Debug, Default)]
+// TODO: Better Debug formatting...
+#[derive(DebugStub, Default)]
 pub struct Client {
     bootstrap_addrs: Vec<String>,
     brokers: BTreeMap<i32, BrokerInfo>,
     topic_leaders: BTreeMap<(String, i32), i32>,
-    // conns_by_id: BTreeMap<i32, BrokerChannel>,
-    // conns_by_host: BTreeMap<String, BrokerChannel>,
+    #[debug_stub="conns_by_id"]
+    conns_by_id: BTreeMap<i32, BrokerChannel>,
+    #[debug_stub="conns_by_id"]
+    conns_by_host: BTreeMap<String, BrokerChannel>,
 }
 
 pub enum ConnectError {
     EmptyBootstrapServers(),
-    IoError(io::Error),
+    Io(io::Error),
 }
 
 impl Client {
     /// tries to connect to each given broker once, re
     pub async fn connect(mut addrs: Vec<String>) -> Result<Client, ConnectError> {
-        if addrs.is_empty() {
-            return Err(ConnectError::EmptyBootstrapServers());
-        }
         addrs.shuffle(&mut rand::thread_rng());
 
-        let client = Client{
+        let mut client = Client{
             bootstrap_addrs: addrs,
             ..Default::default()
         };
 
-        let mut error = None;
+        let mut channel = None;
 
         for addr in &client.bootstrap_addrs {
             match broker::connect(addr).await {
                 // store last error
-                Err(e) => error = Some(e),
+                Err(e) => channel = Some(Err(e)),
                 Ok((broker_client, responses)) => {
-                    // clear error
-                    error = None;
                     // TODO: Connection between responses and client channel?
                     tokio::spawn(async {
-                        responses.run().await.expect("Spawn tokio response")
+                        responses.run().await.expect("TODO: Handle broker responses error")
                     });
                     let (tx, rx) = mpsc::channel::<broker::KafkaProtocolRequest>(1);
                     // let addr = addr.to_string();
-                    // tokio::spawn(async move {
-                    //     rx.forward(broker_client).await.expect("TODO: Handle broker errors");
-                    // });
-                    let tx = tx.sink_map_err(KafkaError::from);
-                    // client.conns_by_host.insert(addr.to_string(), );
+                    tokio::spawn(async move {
+                        let _: &dyn Sink<broker::KafkaProtocolRequest, Error=io::Error> = &broker_client;
+                        rx.map(Ok).forward(broker_client).await.expect("TODO: Handle broker request errors");
+                    });
+                    client.conns_by_host.insert(addr.to_string(), tx.clone().sink_map_err(KafkaError::from as FromSendError));
+                    channel = Some(Ok(tx.sink_map_err(KafkaError::from as FromSendError)));
                     break
                 }
             }
         };
 
-        unimplemented!("todo");
-        Ok(client)
+        let mut channel = match channel {
+            None => return Err(ConnectError::EmptyBootstrapServers()),
+            Some(Err(e)) => return Err(ConnectError::Io(e)),
+            Some(Ok(ch)) => ch,
+        };
 
-            //     broker
-            //         .send(MetadataRequestV0 { topics: Some(Vec::new()) })
+        // channel.send(MetadataRequestV0 { topics: Some(Vec::new()) });
+
             //         .map(|response| (broker, response))
             // })
             // .and_then(|(_, response)| {
@@ -111,5 +113,6 @@ impl Client {
             //         conns: BTreeMap::default(),
             //     })
             // })
+            Ok(client)
     }
 }
