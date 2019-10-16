@@ -1,15 +1,22 @@
+#![forbid(unsafe_code)]
+
+use bytes::Bytes;
 use debug_stub_derive::DebugStub;
 use franzi_base::Error as KafkaError;
-use franzi_proto::messages::metadata::MetadataRequestV0;
-use futures::{channel::mpsc, future, Future, Sink, SinkExt, StreamExt};
+use franzi_proto::{
+    exchange,
+    messages::metadata::MetadataRequestV0,
+};
+use futures::{channel::mpsc, Sink, SinkExt, StreamExt};
 use rand::seq::SliceRandom;
 use std::{
-    boxed::Box,
     convert::From,
     collections::BTreeMap,
+    fmt,
     io,
     fmt::Debug
 };
+use tracing::{event, span, Level};
 
 pub mod broker;
 
@@ -21,13 +28,18 @@ pub struct BrokerInfo {
     pub rack: Option<String>,
 }
 
-type FromSendError = fn(mpsc::SendError) -> KafkaError;
-type BrokerChannel = futures::sink::SinkMapErr<mpsc::Sender<broker::KafkaProtocolRequest>, FromSendError>;
+type BrokerChannel = mpsc::Sender<exchange::Exchange>;
+
+#[derive(Debug, Default)]
+pub struct ClusterConfig {
+    pub bootstrap_addrs: Vec<String>,
+    pub client_id: Bytes,
+}
 
 // TODO: Better Debug formatting...
 #[derive(DebugStub, Default)]
-pub struct Client {
-    bootstrap_addrs: Vec<String>,
+pub struct Cluster {
+    config: ClusterConfig,
     brokers: BTreeMap<i32, BrokerInfo>,
     topic_leaders: BTreeMap<(String, i32), i32>,
     #[debug_stub="conns_by_id"]
@@ -36,40 +48,84 @@ pub struct Client {
     conns_by_host: BTreeMap<String, BrokerChannel>,
 }
 
+#[derive(Debug)]
 pub enum ConnectError {
     EmptyBootstrapServers(),
     Io(io::Error),
+    KafkaError(KafkaError),
 }
 
-impl Client {
+impl From<KafkaError> for ConnectError {
+    fn from(e: KafkaError) -> ConnectError {
+        ConnectError::KafkaError(e)
+    }
+}
+
+impl fmt::Display for ConnectError {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            ConnectError::EmptyBootstrapServers() => write!(f, "no bootstrap servers specified"),
+            ConnectError::Io(e) => write!(f, "Error connecting to server: {}", e),
+            ConnectError::KafkaError(e) => write!(f, "Error trying to speak with server: {}", e),
+        }
+    }
+}
+
+impl std::error::Error for ConnectError {
+    fn description(&self) -> &str {
+        match self {
+            ConnectError::EmptyBootstrapServers() => "no bootstrap servers specified",
+            ConnectError::Io(_) => "Error connecting to server",
+            ConnectError::KafkaError(_) => "Error trying to speak with server"
+        }
+    }
+    fn cause(&self) -> Option<&dyn std::error::Error> {
+        None
+    }
+    fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
+        None
+    }
+}
+
+impl Cluster {
     /// tries to connect to each given broker once, re
-    pub async fn connect(mut addrs: Vec<String>) -> Result<Client, ConnectError> {
+    pub async fn connect(mut addrs: Vec<String>) -> Result<Cluster, ConnectError> {
+        let span = span!(Level::INFO, "connect", ?addrs);
+        let _enter = span.enter();
+
         addrs.shuffle(&mut rand::thread_rng());
 
-        let mut client = Client{
-            bootstrap_addrs: addrs,
+        let mut client = Cluster{
+            config: ClusterConfig{
+                bootstrap_addrs: addrs,
+                client_id: b"franzi_test_client"[..].into(),
+            },
             ..Default::default()
         };
 
         let mut channel = None;
 
-        for addr in &client.bootstrap_addrs {
+        for addr in &client.config.bootstrap_addrs {
             match broker::connect(addr).await {
                 // store last error
-                Err(e) => channel = Some(Err(e)),
+                Err(e) => {
+                    event!(Level::DEBUG, ?addr, error = ?e, "Connection error");
+                    channel = Some(Err(e));
+                },
                 Ok((broker_client, responses)) => {
+                    event!(Level::DEBUG, ?addr, "Connected");
                     // TODO: Connection between responses and client channel?
                     tokio::spawn(async {
                         responses.run().await.expect("TODO: Handle broker responses error")
                     });
-                    let (tx, rx) = mpsc::channel::<broker::KafkaProtocolRequest>(1);
+                    let (tx, rx) = mpsc::channel::<exchange::Exchange>(1);
                     // let addr = addr.to_string();
                     tokio::spawn(async move {
-                        let _: &dyn Sink<broker::KafkaProtocolRequest, Error=io::Error> = &broker_client;
+                        let _: &dyn Sink<exchange::Exchange, Error=io::Error> = &broker_client;
                         rx.map(Ok).forward(broker_client).await.expect("TODO: Handle broker request errors");
                     });
-                    client.conns_by_host.insert(addr.to_string(), tx.clone().sink_map_err(KafkaError::from as FromSendError));
-                    channel = Some(Ok(tx.sink_map_err(KafkaError::from as FromSendError)));
+                    client.conns_by_host.insert(addr.to_string(), tx.clone());
+                    channel = Some(Ok(tx));
                     break
                 }
             }
@@ -81,7 +137,12 @@ impl Client {
             Some(Ok(ch)) => ch,
         };
 
-        // channel.send(MetadataRequestV0 { topics: Some(Vec::new()) });
+        let (request, response) =exchange::make_exchange(&MetadataRequestV0 { topics: Some(Vec::new()) }, client.config.client_id.clone());
+        channel.send(request).await.map_err(KafkaError::from)?;
+
+        let response = response.await;
+        event!(Level::DEBUG, ?response);
+        let _response = response?;
 
             //         .map(|response| (broker, response))
             // })
@@ -106,7 +167,7 @@ impl Client {
             //         Ok(brokers) => brokers,
             //         Err(e) => return future::err(e),
             //     };
-            //     future::ok(Client {
+            //     future::ok(Cluster {
             //         brokers,
             //         topic_leaders: BTreeMap::default(),
             //         // TODO: Figure out who this connection belongs to?

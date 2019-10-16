@@ -1,17 +1,11 @@
-//! Kafka client
-//! Note: This needs better type tetris, I'm really not happy how this is working out.
-
-#![forbid(unsafe_code)]
-
 use byteorder::ByteOrder;
 use bytes::{BufMut, Bytes, BytesMut};
 use chashmap::CHashMap;
-use franzi_base::types::KafkaString;
-use franzi_base::{Error as KafkaError, FromKafkaBytes, KafkaRequest, ToKafkaBytes};
-use franzi_proto::header::RequestHeader;
+use franzi_base::{Error as KafkaError, KafkaRequest};
+use franzi_proto::exchange;
 use futures::channel::oneshot;
 use futures::{
-    task::Context, Future, Poll, Sink, SinkExt, Stream, StreamExt,
+    task::Context, Poll, Sink, SinkExt, Stream, StreamExt,
 };
 use std::io;
 use std::pin::Pin;
@@ -22,12 +16,6 @@ use tokio::net::{
 };
 use tokio_net::ToSocketAddrs;
 use tokio_io::{AsyncRead, AsyncWrite, split::{ReadHalf, WriteHalf}};
-
-pub struct KafkaProtocolRequest {
-    payload: Bytes,
-    correlation_id: i32,
-    response: oneshot::Sender<Bytes>,
-}
 
 pub type BrokerConnection<Si, St> = (
     BrokerSink<FramedWrite<WriteHalf<Si>, ConnectionCodec>, io::Error>,
@@ -42,7 +30,8 @@ where
 {
     sink: Si,
     correlation_ids: Arc<CHashMap<i32, oneshot::Sender<Bytes>>>,
-    next_correlation_id: i32,
+    // todo: better naming?
+    _next_correlation_id: i32,
 }
 
 pub struct BrokerResponses<St>
@@ -67,7 +56,7 @@ pub fn new_broker_connection<T: AsyncRead + AsyncWrite>((read, write): (ReadHalf
         BrokerSink {
             sink,
             correlation_ids: correlation_ids.clone(),
-            next_correlation_id: 0,
+            _next_correlation_id: 0,
         },
         BrokerResponses {
             stream,
@@ -79,52 +68,21 @@ pub fn new_broker_connection<T: AsyncRead + AsyncWrite>((read, write): (ReadHalf
 impl<Si, Ei> BrokerSink<Si, Ei>
 where
     Si: Sink<Bytes, Error = Ei> + Unpin,
+{
+    fn next_correlation_id(&mut self) -> i32 {
+        // Note: if this message is dropped, these is a "gap" in the correlation_ids, but that should be ok
+        let correlation_id = self._next_correlation_id;
+        // Overflow is ok, we just assume the old messages are already processed and there are no conv
+        self._next_correlation_id = self._next_correlation_id.wrapping_add(1);
+        correlation_id
+    }
+}
+
+impl<Si, Ei> BrokerSink<Si, Ei>
+where
+    Si: Sink<Bytes, Error = Ei> + Unpin,
     KafkaError: std::convert::From<Ei>,
 {
-    #[allow(clippy::wrong_self_convention)] // TODO: Move to Request?
-    fn to_kafka_protocol_request<Req: KafkaRequest>(
-        &mut self,
-        req: Req,
-        client_id: Bytes,
-    ) -> (
-        KafkaProtocolRequest,
-        impl Future<Output = Result<Req::Response, KafkaError>>,
-    ) {
-        // Note: if this message is dropped, these is a "gap" in the correlation_ids, but that should be ok
-        let correlation_id = self.next_correlation_id;
-        // Overflow is ok, we just assume the old messages are already processed and there are no conv
-        self.next_correlation_id = self.next_correlation_id.wrapping_add(1);
-
-        //turn request into Bytes
-        let req_header = RequestHeader {
-            api_key: req.api_key(),
-            api_version: req.api_version(),
-            correlation_id,
-            // TODO: Dont clone() here
-            client_id: Some(KafkaString(client_id)),
-        };
-
-        let len = req_header.len_to_write() + req.len_to_write();
-        let mut buf = BytesMut::with_capacity(4 + len);
-        (len as i32).write(&mut buf);
-        req_header.write(&mut buf);
-        req.write(&mut buf);
-
-        let (tx, rx) = oneshot::channel();
-        (
-            KafkaProtocolRequest {
-                payload: buf.freeze(),
-                correlation_id,
-                response: tx,
-            },
-            async {
-                let buf = rx.await?;
-                let mut buf = io::Cursor::new(buf);
-                Req::Response::read(&mut buf).map_err(|e| e.into())
-            },
-        )
-    }
-
     /// Send a single message through this BrokerConnection
     /// Note: This uses SinkExt::send, so if you're using multiple items, the
     /// caveat of batching together multiple messages and using poll_ready/start_send/poll_flush
@@ -133,13 +91,13 @@ where
         req: Req,
         client_id: Bytes, //TODO: Atomic?
     ) -> Result<Req::Response, KafkaError> {
-        let (request, response) = self.to_kafka_protocol_request(req, client_id);
+        let (request, response) = exchange::make_exchange(&req, client_id);
         self.send(request).await?;
         response.await
     }
 }
 
-impl<Si, Ei> Sink<KafkaProtocolRequest> for BrokerSink<Si, Ei>
+impl<Si, Ei> Sink<exchange::Exchange> for BrokerSink<Si, Ei>
 where
     Si: Sink<Bytes, Error = Ei> + Unpin,
 {
@@ -149,10 +107,12 @@ where
         Pin::new(&mut self.get_mut().sink).poll_ready(cx)
     }
 
-    fn start_send(self: Pin<&mut Self>, item: KafkaProtocolRequest) -> Result<(), Self::Error> {
-        self.correlation_ids
-            .insert(item.correlation_id, item.response);
-        Pin::new(&mut self.get_mut().sink).start_send(item.payload)
+    fn start_send(self: Pin<&mut Self>, mut item: exchange::Exchange) -> Result<(), Self::Error> {
+        let this = self.get_mut();
+        let correlation_id = this.next_correlation_id();
+        item.set_correlation_id(correlation_id);
+        this.correlation_ids.insert(correlation_id, item.response);
+        Pin::new(&mut this.sink).start_send(item.payload.freeze())
     }
 
     fn poll_flush(self: Pin<&mut Self>, cx: &mut Context) -> Poll<Result<(), Self::Error>> {
