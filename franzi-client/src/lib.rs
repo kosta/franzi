@@ -11,7 +11,7 @@ use franzi_proto::{
     exchange,
     messages::metadata::MetadataRequestV0,
 };
-use futures::{channel::mpsc, Sink, SinkExt, StreamExt};
+use futures::{channel::mpsc, SinkExt, StreamExt};
 use rand::seq::SliceRandom;
 use std::{
     convert::From,
@@ -21,6 +21,7 @@ use std::{
     fmt::Debug
 };
 use tracing::{event, span, Level};
+use tracing_futures::Instrument;
 
 pub mod broker;
 
@@ -111,6 +112,8 @@ impl Cluster {
         let mut channel = None;
 
         for addr in &client.config.bootstrap_addrs {
+            let connection_span = span!(parent: &span, Level::INFO, "connection", ?addr);
+            let _ = span.enter();
             match broker::connect(addr).await {
                 // store last error
                 Err(e) => {
@@ -121,14 +124,15 @@ impl Cluster {
                     event!(Level::DEBUG, ?addr, "Connected");
                     // TODO: Connection between responses and client channel?
                     tokio::spawn(async {
+                        event!(Level::DEBUG, "handling broker responses");
                         responses.run().await.expect("TODO: Handle broker responses error")
-                    });
+                    }.instrument(connection_span.clone()));
                     let (tx, rx) = mpsc::channel::<exchange::Exchange>(1);
                     // let addr = addr.to_string();
                     tokio::spawn(async move {
-                        let _: &dyn Sink<exchange::Exchange, Error=io::Error> = &broker_client;
+                        event!(Level::DEBUG, "handling broker requests");
                         rx.map(Ok).forward(broker_client).await.expect("TODO: Handle broker request errors");
-                    });
+                    }.instrument(connection_span.clone()));
                     client.conns_by_host.insert(addr.to_string(), tx.clone());
                     channel = Some(Ok(tx));
                     break
