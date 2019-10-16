@@ -4,18 +4,17 @@ use chashmap::CHashMap;
 use franzi_base::{Error as KafkaError, KafkaRequest};
 use franzi_proto::exchange;
 use futures::channel::oneshot;
-use futures::{
-    task::Context, Poll, Sink, SinkExt, Stream, StreamExt,
-};
+use futures::{task::Context, Poll, Sink, SinkExt, Stream, StreamExt};
 use std::io;
 use std::pin::Pin;
 use std::sync::Arc;
 use tokio::codec::{Decoder, Encoder, FramedRead, FramedWrite};
-use tokio::net::{
-    tcp::TcpStream,
+use tokio::net::tcp::TcpStream;
+use tokio_io::{
+    split::{ReadHalf, WriteHalf},
+    AsyncRead, AsyncWrite,
 };
 use tokio_net::ToSocketAddrs;
-use tokio_io::{AsyncRead, AsyncWrite, split::{ReadHalf, WriteHalf}};
 
 pub type BrokerConnection<Si, St> = (
     BrokerSink<FramedWrite<WriteHalf<Si>, ConnectionCodec>, io::Error>,
@@ -44,11 +43,15 @@ where
 
 // TODO: DNS Resolution!
 pub async fn connect<A: ToSocketAddrs>(addr: A) -> Result<BrokerTcpConnection, io::Error> {
-    Ok(new_broker_connection(tokio::io::split(TcpStream::connect(addr).await?)))
+    Ok(new_broker_connection(tokio::io::split(
+        TcpStream::connect(addr).await?,
+    )))
 }
 
 // TOOD: Make this testable by NOT using a TcpStream directly...
-pub fn new_broker_connection<T: AsyncRead + AsyncWrite>((read, write): (ReadHalf<T>, WriteHalf<T>)) -> BrokerConnection<T, T> {
+pub fn new_broker_connection<T: AsyncRead + AsyncWrite>(
+    (read, write): (ReadHalf<T>, WriteHalf<T>),
+) -> BrokerConnection<T, T> {
     let correlation_ids = Arc::new(CHashMap::new());
     let sink = FramedWrite::new(write, ConnectionCodec());
     let stream = FramedRead::new(read, ConnectionCodec());

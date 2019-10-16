@@ -7,13 +7,16 @@
 use franzi_client::Cluster;
 use tracing::info;
 
-use tracing_subscriber::{FmtSubscriber, EnvFilter};
+use tracing_subscriber::{EnvFilter, FmtSubscriber};
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    tracing::subscriber::set_global_default(FmtSubscriber::builder()
-    .with_env_filter(EnvFilter::new("DEBUG"))
-    .finish()).expect("tracing::subscriber::set_global_default");
+    tracing::subscriber::set_global_default(
+        FmtSubscriber::builder()
+            .with_env_filter(EnvFilter::new("DEBUG"))
+            .finish(),
+    )
+    .expect("tracing::subscriber::set_global_default");
 
     let cluster = Cluster::connect(vec!["localhost:9092".into()]).await?;
     info!("cluster: {:?}", cluster);

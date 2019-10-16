@@ -9,12 +9,7 @@ pub mod types;
 pub(crate) mod varint;
 
 use bytes::{BufMut, Bytes};
-use futures::{
-    channel::{
-        mpsc::SendError,
-        oneshot::Canceled,
-    },
-};
+use futures::channel::{mpsc::SendError, oneshot::Canceled};
 use std::fmt;
 use std::io;
 use std::io::Cursor;

@@ -7,19 +7,10 @@
 use bytes::Bytes;
 use debug_stub_derive::DebugStub;
 use franzi_base::Error as KafkaError;
-use franzi_proto::{
-    exchange,
-    messages::metadata::MetadataRequestV0,
-};
+use franzi_proto::{exchange, messages::metadata::MetadataRequestV0};
 use futures::{channel::mpsc, SinkExt, StreamExt};
 use rand::seq::SliceRandom;
-use std::{
-    convert::From,
-    collections::BTreeMap,
-    fmt,
-    io,
-    fmt::Debug
-};
+use std::{collections::BTreeMap, convert::From, fmt, fmt::Debug, io};
 use tracing::{event, span, Level};
 use tracing_futures::Instrument;
 
@@ -47,9 +38,9 @@ pub struct Cluster {
     config: ClusterConfig,
     brokers: BTreeMap<i32, BrokerInfo>,
     topic_leaders: BTreeMap<(String, i32), i32>,
-    #[debug_stub="conns_by_id"]
+    #[debug_stub = "conns_by_id"]
     conns_by_id: BTreeMap<i32, BrokerChannel>,
-    #[debug_stub="conns_by_id"]
+    #[debug_stub = "conns_by_id"]
     conns_by_host: BTreeMap<String, BrokerChannel>,
 }
 
@@ -81,7 +72,7 @@ impl std::error::Error for ConnectError {
         match self {
             ConnectError::EmptyBootstrapServers() => "no bootstrap servers specified",
             ConnectError::Io(_) => "Error connecting to server",
-            ConnectError::KafkaError(_) => "Error trying to speak with server"
+            ConnectError::KafkaError(_) => "Error trying to speak with server",
         }
     }
     fn cause(&self) -> Option<&dyn std::error::Error> {
@@ -102,8 +93,8 @@ impl Cluster {
         addrs.shuffle(&mut rand::thread_rng());
 
         // TODO: Make connect() a method on ClusterConfig
-        let mut client = Cluster{
-            config: ClusterConfig{
+        let mut client = Cluster {
+            config: ClusterConfig {
                 bootstrap_addrs: addrs,
                 client_id: b"franzi_test_client"[..].into(),
             },
@@ -120,26 +111,38 @@ impl Cluster {
                 Err(e) => {
                     event!(Level::DEBUG, ?addr, error = ?e, "Connection error");
                     channel = Some(Err(e));
-                },
+                }
                 Ok((broker_client, responses)) => {
                     event!(Level::DEBUG, ?addr, "Connected");
                     // TODO: Connection between responses and client channel?
-                    tokio::spawn(async {
-                        event!(Level::DEBUG, "handling broker responses");
-                        responses.run().await.expect("TODO: Handle broker responses error")
-                    }.instrument(connection_span.clone()));
+                    tokio::spawn(
+                        async {
+                            event!(Level::DEBUG, "handling broker responses");
+                            responses
+                                .run()
+                                .await
+                                .expect("TODO: Handle broker responses error")
+                        }
+                            .instrument(connection_span.clone()),
+                    );
                     let (tx, rx) = mpsc::channel::<exchange::Exchange>(1);
                     // let addr = addr.to_string();
-                    tokio::spawn(async move {
-                        event!(Level::DEBUG, "handling broker requests");
-                        rx.map(Ok).forward(broker_client).await.expect("TODO: Handle broker request errors");
-                    }.instrument(connection_span.clone()));
+                    tokio::spawn(
+                        async move {
+                            event!(Level::DEBUG, "handling broker requests");
+                            rx.map(Ok)
+                                .forward(broker_client)
+                                .await
+                                .expect("TODO: Handle broker request errors");
+                        }
+                            .instrument(connection_span.clone()),
+                    );
                     client.conns_by_host.insert(addr.to_string(), tx.clone());
                     channel = Some(Ok(tx));
-                    break
+                    break;
                 }
             }
-        };
+        }
 
         let mut channel = match channel {
             None => return Err(ConnectError::EmptyBootstrapServers()),
@@ -147,7 +150,12 @@ impl Cluster {
             Some(Ok(ch)) => ch,
         };
 
-        let (request, response) =exchange::make_exchange(&MetadataRequestV0 { topics: Some(Vec::new()) }, client.config.client_id.clone());
+        let (request, response) = exchange::make_exchange(
+            &MetadataRequestV0 {
+                topics: Some(Vec::new()),
+            },
+            client.config.client_id.clone(),
+        );
         channel.send(request).await.map_err(KafkaError::from)?;
 
         let response = response.await;
@@ -155,12 +163,17 @@ impl Cluster {
         let response = response?;
 
         for broker in response.brokers.unwrap_or_default() {
-            client.brokers.insert(broker.node_id, BrokerInfo{
-                node_id: broker.node_id,
-                host: std::str::from_utf8(broker.host.0.as_ref()).map_err(KafkaError::from)?.to_string(),
-                port: broker.port,
-                rack: None, // TODO
-            });
+            client.brokers.insert(
+                broker.node_id,
+                BrokerInfo {
+                    node_id: broker.node_id,
+                    host: std::str::from_utf8(broker.host.0.as_ref())
+                        .map_err(KafkaError::from)?
+                        .to_string(),
+                    port: broker.port,
+                    rack: None, // TODO
+                },
+            );
         }
 
         Ok(client)
