@@ -1,5 +1,7 @@
 #![forbid(unsafe_code)]
 #![warn(clippy::all)]
+#![warn(clippy::pedantic)]
+#![warn(clippy::cargo)]
 
 pub mod api_keys;
 pub mod types;

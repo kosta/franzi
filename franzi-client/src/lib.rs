@@ -1,5 +1,7 @@
 #![forbid(unsafe_code)]
 #![warn(clippy::all)]
+#![warn(clippy::pedantic)]
+#![warn(clippy::cargo)]
 
 use bytes::Bytes;
 use debug_stub_derive::DebugStub;
