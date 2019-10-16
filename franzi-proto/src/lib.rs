@@ -1,4 +1,5 @@
 #![forbid(unsafe_code)]
+#![warn(clippy::all)]
 
 #[macro_use]
 extern crate franzi_macros;

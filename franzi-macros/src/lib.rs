@@ -1,4 +1,5 @@
 #![forbid(unsafe_code)]
+#![warn(clippy::all)]
 
 extern crate proc_macro;
 

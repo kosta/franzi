@@ -1,4 +1,5 @@
 #![forbid(unsafe_code)]
+#![warn(clippy::all)]
 
 use bytes::Bytes;
 use franzi_base::types::KafkaString;
