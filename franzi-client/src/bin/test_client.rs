@@ -5,6 +5,7 @@
 //#![warn(clippy::cargo)]
 
 use franzi_client::Cluster;
+use tracing::info;
 
 use tracing_subscriber::{FmtSubscriber, EnvFilter};
 
@@ -14,7 +15,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     .with_env_filter(EnvFilter::new("DEBUG"))
     .finish()).expect("tracing::subscriber::set_global_default");
 
-    Cluster::connect(vec!["localhost:9092".into()]).await?;
+    let cluster = Cluster::connect(vec!["localhost:9092".into()]).await?;
+    info!("cluster: {:?}", cluster);
 
     Ok(())
 }

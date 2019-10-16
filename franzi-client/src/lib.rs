@@ -101,6 +101,7 @@ impl Cluster {
 
         addrs.shuffle(&mut rand::thread_rng());
 
+        // TODO: Make connect() a method on ClusterConfig
         let mut client = Cluster{
             config: ClusterConfig{
                 bootstrap_addrs: addrs,
@@ -151,38 +152,17 @@ impl Cluster {
 
         let response = response.await;
         event!(Level::DEBUG, ?response);
-        let _response = response?;
+        let response = response?;
 
-            //         .map(|response| (broker, response))
-            // })
-            // .and_then(|(_, response)| {
-            //     let brokers = match response
-            //         .brokers
-            //         .unwrap_or_default()
-            //         .into_iter()
-            //         .map(|b| {
-            //             Ok((
-            //                 b.node_id,
-            //                 BrokerInfo {
-            //                     node_id: b.node_id,
-            //                     host: std::str::from_utf8(b.host.0.as_ref())?.to_string(),
-            //                     port: b.port,
-            //                     rack: None, // TODO
-            //                 },
-            //             ))
-            //         })
-            //         .collect()
-            //     {
-            //         Ok(brokers) => brokers,
-            //         Err(e) => return future::err(e),
-            //     };
-            //     future::ok(Cluster {
-            //         brokers,
-            //         topic_leaders: BTreeMap::default(),
-            //         // TODO: Figure out who this connection belongs to?
-            //         conns: BTreeMap::default(),
-            //     })
-            // })
-            Ok(client)
+        for broker in response.brokers.unwrap_or_default() {
+            client.brokers.insert(broker.node_id, BrokerInfo{
+                node_id: broker.node_id,
+                host: std::str::from_utf8(broker.host.0.as_ref()).map_err(KafkaError::from)?.to_string(),
+                port: broker.port,
+                rack: None, // TODO
+            });
+        }
+
+        Ok(client)
     }
 }
