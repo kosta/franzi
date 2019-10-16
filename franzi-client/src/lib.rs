@@ -1,7 +1,8 @@
 #![forbid(unsafe_code)]
 #![warn(clippy::all)]
-#![warn(clippy::pedantic)]
-#![warn(clippy::cargo)]
+//TODO: Re-enable once you got the time to fix this
+//#![warn(clippy::pedantic)]
+//#![warn(clippy::cargo)]
 
 use bytes::Bytes;
 use debug_stub_derive::DebugStub;
@@ -91,7 +92,8 @@ impl std::error::Error for ConnectError {
 }
 
 impl Cluster {
-    /// tries to connect to each given broker once, re
+    /// tries to connect to each given broker once, returning the last error or the cluster
+    #[allow(clippy::cognitive_complexity)] // oops :)
     pub async fn connect(mut addrs: Vec<String>) -> Result<Cluster, ConnectError> {
         let span = span!(Level::INFO, "connect", ?addrs);
         let _enter = span.enter();

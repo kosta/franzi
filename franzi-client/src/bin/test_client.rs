@@ -1,7 +1,8 @@
 #![forbid(unsafe_code)]
 #![warn(clippy::all)]
-#![warn(clippy::pedantic)]
-#![warn(clippy::cargo)]
+//TODO: Re-enable once you got the time to fix this
+//#![warn(clippy::pedantic)]
+//#![warn(clippy::cargo)]
 
 use franzi_client::Cluster;
 
