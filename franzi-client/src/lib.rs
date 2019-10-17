@@ -175,7 +175,7 @@ impl Cluster {
                 Ok((sink, responses)) => {
                     event!(Level::DEBUG, ?addr, "Connected");
                     spawn_off_broker_responses(responses, connection_span.clone());
-                    let (tx, rx) = mpsc::channel::<exchange::Exchange>(1);
+                    let (tx, rx) = mpsc::channel::<exchange::Exchange>(0);
                     spawn_off_broker_sink(sink, addr.clone(), rx, connection_span.clone());
                     client.conns_by_host.insert(addr.to_string(), tx.clone());
                     channel = Some(Ok(tx));
