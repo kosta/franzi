@@ -22,6 +22,7 @@ pub type BrokerConnection<Si, St> = (
 );
 
 pub type BrokerTcpConnection = BrokerConnection<TcpStream, TcpStream>;
+pub type BrokerTcpSink = BrokerSink<FramedWrite<WriteHalf<TcpStream>, ConnectionCodec>>;
 
 pub struct BrokerSink<Si>
 where

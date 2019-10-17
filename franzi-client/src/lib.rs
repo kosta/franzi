@@ -4,17 +4,18 @@
 //#![warn(clippy::pedantic)]
 //#![warn(clippy::cargo)]
 
-use bytes::Bytes;
+use bytes::{Bytes, BytesMut};
 use debug_stub_derive::DebugStub;
 use franzi_base::{types::KafkaString, Error as KafkaError};
 use franzi_proto::{
     exchange,
+    exchange::Exchange,
     messages::metadata::{MetadataRequestV0, MetadataRequestV7, MetadataResponseV7},
 };
-use futures::{channel::mpsc, SinkExt, StreamExt};
+use futures::{channel::mpsc, SinkExt, Stream};
 use rand::seq::{IteratorRandom, SliceRandom};
 use std::{collections::BTreeMap, convert::From, fmt, fmt::Debug, io};
-use tracing::{event, span, Level};
+use tracing::{event, span, Level, Span};
 use tracing_futures::Instrument;
 
 pub mod broker;
@@ -86,6 +87,62 @@ impl std::error::Error for ConnectError {
     }
 }
 
+fn spawn_off_broker_responses<St>(responses: broker::BrokerResponses<St>, span: Span)
+where
+    St: Stream<Item = Result<BytesMut, io::Error>> + Unpin + Send + Sync + 'static,
+{
+    tokio::spawn(
+        async {
+            event!(Level::DEBUG, "handling broker responses");
+            let result = responses.run().await;
+            event!(Level::DEBUG, ?result, "broker response result");
+        }
+            .instrument(span),
+    );
+}
+
+#[allow(clippy::cognitive_complexity)] // Ooops...
+fn spawn_off_broker_sink(
+    mut sink: broker::BrokerTcpSink,
+    addr: String,
+    mut rx: mpsc::Receiver<Exchange>,
+    span: Span,
+) {
+    let span_inner = span.clone();
+    tokio::spawn(
+        async move {
+            event!(Level::DEBUG, "handling broker requests");
+            loop {
+                let result = sink.send_all(&mut rx).await;
+                event!(Level::DEBUG, ?result, "broker requests result");
+                // either all tx are dropped (and rx returned None) => result Ok
+                // or sink is broken => result Err
+                if result.is_ok() {
+                    return;
+                }
+                loop {
+                    // reconnect
+                    match broker::connect(&addr).await {
+                        Ok((client, responses)) => {
+                            event!(Level::DEBUG, "Reconnected");
+                            sink = client;
+                            spawn_off_broker_responses(responses, span_inner.clone());
+                            break; // reconnect loop
+                        }
+                        Err(e) => {
+                            event!(Level::DEBUG, ?e, "Error reconnecting...");
+                            // TODO: Configurable exponential backoff
+                            let amount = std::time::Duration::from_secs(30);
+                            tokio::timer::delay(tokio::clock::now() + amount).await
+                        }
+                    }
+                }
+            }
+        }
+            .instrument(span.clone()),
+    );
+}
+
 impl Cluster {
     /// tries to connect to each given broker once, returning the last error or the cluster
     #[allow(clippy::cognitive_complexity)] // oops :)
@@ -115,77 +172,11 @@ impl Cluster {
                     event!(Level::DEBUG, ?addr, error = ?e, "Connection error");
                     channel = Some(Err(e));
                 }
-                Ok((mut broker_client, responses)) => {
+                Ok((sink, responses)) => {
                     event!(Level::DEBUG, ?addr, "Connected");
-                    // TODO: Connection between responses and client channel?
-                    tokio::spawn(
-                        async {
-                            event!(Level::DEBUG, "handling broker responses");
-                            let result = responses.run().await;
-                            event!(Level::DEBUG, ?result, "broker response result");
-                        }
-                            .instrument(connection_span.clone()),
-                    );
-                    let (tx, mut rx) = mpsc::channel::<exchange::Exchange>(1);
-                    {
-                        let addr = addr.to_string();
-                        let connection_span_inner = connection_span.clone();
-                        tokio::spawn(
-                            async move {
-                                event!(Level::DEBUG, "handling broker requests");
-                                loop {
-                                    let result = broker_client.send_all(&mut rx).await;
-                                    event!(Level::DEBUG, ?result, "broker requests result");
-                                    // either all tx are dropped (and rx returned None) => result Ok
-                                    // or broker_client is broken => result Err
-                                    match result {
-                                        Ok(()) => return,
-                                        Err(_) => loop {
-                                            // reconnect
-                                            match broker::connect(&addr).await {
-                                                Ok((client, responses)) => {
-                                                    event!(Level::DEBUG, "Reconnected");
-                                                    broker_client = client;
-                                                    tokio::spawn(
-                                                        async {
-                                                            event!(
-                                                                Level::DEBUG,
-                                                                "handling broker responses"
-                                                            );
-                                                            let result = responses.run().await;
-                                                            event!(
-                                                                Level::DEBUG,
-                                                                ?result,
-                                                                "broker response result"
-                                                            );
-                                                        }
-                                                            .instrument(
-                                                                connection_span_inner.clone(),
-                                                            ),
-                                                    );
-                                                    break; // reconnect loop
-                                                }
-                                                Err(e) => {
-                                                    event!(
-                                                        Level::DEBUG,
-                                                        ?e,
-                                                        "Error reconnecting..."
-                                                    );
-                                                    // TODO: Configurable exponential backoff
-                                                    let amount = std::time::Duration::from_secs(30);
-                                                    tokio::timer::delay(
-                                                        tokio::clock::now() + amount,
-                                                    )
-                                                    .await
-                                                }
-                                            }
-                                        },
-                                    }
-                                }
-                            }
-                                .instrument(connection_span.clone()),
-                        );
-                    }
+                    spawn_off_broker_responses(responses, connection_span.clone());
+                    let (tx, rx) = mpsc::channel::<exchange::Exchange>(1);
+                    spawn_off_broker_sink(sink, addr.clone(), rx, connection_span.clone());
                     client.conns_by_host.insert(addr.to_string(), tx.clone());
                     channel = Some(Ok(tx));
                     break;
