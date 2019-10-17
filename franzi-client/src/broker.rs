@@ -108,8 +108,12 @@ where
     fn start_send(self: Pin<&mut Self>, mut item: exchange::Exchange) -> Result<(), Self::Error> {
         let this = self.get_mut();
         // TODO: Is this too expensive?
-        let correlation_ids = this.correlation_ids.upgrade().
-            ok_or_else(|| io::Error::new(io::ErrorKind::ConnectionReset, "broker responses are closed"))?;
+        let correlation_ids = this.correlation_ids.upgrade().ok_or_else(|| {
+            io::Error::new(
+                io::ErrorKind::ConnectionReset,
+                "broker responses are closed",
+            )
+        })?;
         let correlation_id = this.next_correlation_id();
         item.set_correlation_id(correlation_id);
         correlation_ids.insert(correlation_id, item.response);
@@ -152,7 +156,7 @@ where
             if self.correlation_ids.len() == 0 && Arc::weak_count(&self.correlation_ids) == 0 {
                 // "sending half" is closed, nothing more to do...
                 // TODO: Is this a too slow and too hacky way to determine this?
-                break
+                break;
             }
         }
 
