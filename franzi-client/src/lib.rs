@@ -6,10 +6,10 @@
 
 use bytes::Bytes;
 use debug_stub_derive::DebugStub;
-use franzi_base::Error as KafkaError;
-use franzi_proto::{exchange, messages::metadata::MetadataRequestV0};
+use franzi_base::{Error as KafkaError, types::KafkaString};
+use franzi_proto::{exchange, messages::metadata::{MetadataRequestV0, MetadataRequestV7, MetadataResponseV7}};
 use futures::{channel::mpsc, SinkExt, StreamExt};
-use rand::seq::SliceRandom;
+use rand::seq::{SliceRandom, IteratorRandom};
 use std::{collections::BTreeMap, convert::From, fmt, fmt::Debug, io};
 use tracing::{event, span, Level};
 use tracing_futures::Instrument;
@@ -118,10 +118,11 @@ impl Cluster {
                     tokio::spawn(
                         async {
                             event!(Level::DEBUG, "handling broker responses");
-                            responses
+                            let result = responses
                                 .run()
-                                .await
-                                .expect("TODO: Handle broker responses error")
+                                .await;
+                            event!(Level::DEBUG, ?result, "broker response result");
+                            result.expect("TODO: Handle broker responses error")
                         }
                             .instrument(connection_span.clone()),
                     );
@@ -130,10 +131,11 @@ impl Cluster {
                     tokio::spawn(
                         async move {
                             event!(Level::DEBUG, "handling broker requests");
-                            rx.map(Ok)
+                            let result = rx.map(Ok)
                                 .forward(broker_client)
-                                .await
-                                .expect("TODO: Handle broker request errors");
+                                .await;
+                                event!(Level::DEBUG, ?result, "broker requests result");
+                                result.expect("TODO: Handle broker request errors");
                         }
                             .instrument(connection_span.clone()),
                     );
@@ -177,5 +179,19 @@ impl Cluster {
         }
 
         Ok(client)
+    }
+
+    /// Fetches metadata for the given topics using a Metadata Request V7.§
+    /// If topics is None, fetches metadata for _all_ topics
+    pub async fn metadata_v7(&self, topics: Option<Vec<String>>) -> Result<MetadataResponseV7, KafkaError> {
+        // select a random (hopefully) established connection
+        // use conns_by_host because conns_by_id does not need to be filled
+        let mut tx = self.conns_by_host.values().choose(&mut rand::thread_rng()).expect("No connections available").clone();
+        let (request, response) = exchange::make_exchange(&MetadataRequestV7{
+            topics: topics.map(|xs| xs.into_iter().map(KafkaString::from).collect()),
+            allow_auto_topic_creation: false,
+        }, self.config.client_id.clone());
+        tx.send(request).await.map_err(KafkaError::from)?;
+        response.await
     }
 }

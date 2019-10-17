@@ -7,7 +7,7 @@ use futures::channel::oneshot;
 use futures::{task::Context, Poll, Sink, SinkExt, Stream, StreamExt};
 use std::io;
 use std::pin::Pin;
-use std::sync::Arc;
+use std::sync::{Arc, Weak};
 use tokio::codec::{Decoder, Encoder, FramedRead, FramedWrite};
 use tokio::net::tcp::TcpStream;
 use tokio_io::{
@@ -17,18 +17,19 @@ use tokio_io::{
 use tokio_net::ToSocketAddrs;
 
 pub type BrokerConnection<Si, St> = (
-    BrokerSink<FramedWrite<WriteHalf<Si>, ConnectionCodec>, io::Error>,
+    BrokerSink<FramedWrite<WriteHalf<Si>, ConnectionCodec>>,
     BrokerResponses<FramedRead<ReadHalf<St>, ConnectionCodec>>,
 );
 
 pub type BrokerTcpConnection = BrokerConnection<TcpStream, TcpStream>;
 
-pub struct BrokerSink<Si, Ei>
+pub struct BrokerSink<Si>
 where
-    Si: Sink<Bytes, Error = Ei> + Unpin,
+    Si: Sink<Bytes, Error = io::Error> + Unpin,
 {
     sink: Si,
-    correlation_ids: Arc<CHashMap<i32, oneshot::Sender<Bytes>>>,
+    /// weak (instead of arc) so we notice if the BrokerResponses are closed
+    correlation_ids: Weak<CHashMap<i32, oneshot::Sender<Bytes>>>,
     // todo: better naming?
     _next_correlation_id: i32,
 }
@@ -58,7 +59,7 @@ pub fn new_broker_connection<T: AsyncRead + AsyncWrite>(
     (
         BrokerSink {
             sink,
-            correlation_ids: correlation_ids.clone(),
+            correlation_ids: Arc::downgrade(&correlation_ids),
             _next_correlation_id: 0,
         },
         BrokerResponses {
@@ -68,9 +69,9 @@ pub fn new_broker_connection<T: AsyncRead + AsyncWrite>(
     )
 }
 
-impl<Si, Ei> BrokerSink<Si, Ei>
+impl<Si> BrokerSink<Si>
 where
-    Si: Sink<Bytes, Error = Ei> + Unpin,
+    Si: Sink<Bytes, Error = io::Error> + Unpin,
 {
     fn next_correlation_id(&mut self) -> i32 {
         // Note: if this message is dropped, these is a "gap" in the correlation_ids, but that should be ok
@@ -79,13 +80,7 @@ where
         self._next_correlation_id = self._next_correlation_id.wrapping_add(1);
         correlation_id
     }
-}
 
-impl<Si, Ei> BrokerSink<Si, Ei>
-where
-    Si: Sink<Bytes, Error = Ei> + Unpin,
-    KafkaError: std::convert::From<Ei>,
-{
     /// Send a single message through this BrokerConnection
     /// Note: This uses SinkExt::send, so if you're using multiple items, the
     /// caveat of batching together multiple messages and using poll_ready/start_send/poll_flush
@@ -100,11 +95,11 @@ where
     }
 }
 
-impl<Si, Ei> Sink<exchange::Exchange> for BrokerSink<Si, Ei>
+impl<Si> Sink<exchange::Exchange> for BrokerSink<Si>
 where
-    Si: Sink<Bytes, Error = Ei> + Unpin,
+    Si: Sink<Bytes, Error = io::Error> + Unpin,
 {
-    type Error = Ei;
+    type Error = io::Error;
 
     fn poll_ready(self: Pin<&mut Self>, cx: &mut Context) -> Poll<Result<(), Self::Error>> {
         Pin::new(&mut self.get_mut().sink).poll_ready(cx)
@@ -112,9 +107,12 @@ where
 
     fn start_send(self: Pin<&mut Self>, mut item: exchange::Exchange) -> Result<(), Self::Error> {
         let this = self.get_mut();
+        // TODO: Is this too expensive?
+        let correlation_ids = this.correlation_ids.upgrade().
+            ok_or_else(|| io::Error::new(io::ErrorKind::ConnectionReset, "broker responses are closed"))?;
         let correlation_id = this.next_correlation_id();
         item.set_correlation_id(correlation_id);
-        this.correlation_ids.insert(correlation_id, item.response);
+        correlation_ids.insert(correlation_id, item.response);
         Pin::new(&mut this.sink).start_send(item.payload.freeze())
     }
 
@@ -150,7 +148,14 @@ where
 
             // ignore send errors to response_chan. If the recipient is no longer interested, we're neither.
             let _ = response_chan.send(buf.freeze());
+
+            if self.correlation_ids.len() == 0 && Arc::weak_count(&self.correlation_ids) == 0 {
+                // "sending half" is closed, nothing more to do...
+                // TODO: Is this a too slow and too hacky way to determine this?
+                break
+            }
         }
+
         Ok(())
     }
 }

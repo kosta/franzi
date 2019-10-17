@@ -5,9 +5,14 @@
 //#![warn(clippy::cargo)]
 
 use franzi_client::Cluster;
+use std::time::Duration;
 use tracing::info;
 
 use tracing_subscriber::{EnvFilter, FmtSubscriber};
+
+pub async fn sleep(amount: Duration) {
+    tokio::timer::delay(tokio::clock::now() + amount).await
+}
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -21,5 +26,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let cluster = Cluster::connect(vec!["localhost:9092".into()]).await?;
     info!("cluster: {:?}", cluster);
 
-    Ok(())
+    loop {
+        info!("got metadata: {:?}", cluster.metadata_v7(None).await);
+        sleep(Duration::from_secs(10)).await;
+    }
 }
