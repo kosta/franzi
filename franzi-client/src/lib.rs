@@ -20,11 +20,11 @@ use tracing_futures::Instrument;
 
 pub mod broker;
 
-#[derive(Debug, Default)]
+#[derive(Clone, Debug, Default)]
 pub struct BrokerInfo {
     pub node_id: i32,
+    /// host:port
     pub host: String,
-    pub port: i32,
     pub rack: Option<String>,
 }
 
@@ -162,6 +162,7 @@ impl Cluster {
         };
 
         let mut channel = None;
+        let mut address = None;
 
         for addr in &client.config.bootstrap_addrs {
             let connection_span = span!(parent: &span, Level::INFO, "connection", ?addr);
@@ -179,6 +180,7 @@ impl Cluster {
                     spawn_off_broker_sink(sink, addr.clone(), rx, connection_span.clone());
                     client.conns_by_host.insert(addr.to_string(), tx.clone());
                     channel = Some(Ok(tx));
+                    address = Some(addr.to_string());
                     break;
                 }
             }
@@ -203,16 +205,19 @@ impl Cluster {
         let response = response?;
 
         for broker in response.brokers.unwrap_or_default() {
+            let broker_info = BrokerInfo {
+                node_id: broker.node_id,
+                host: format!("{}:{}", std::str::from_utf8(broker.host.0.as_ref())
+                    .map_err(KafkaError::from)?
+                    .to_string(), broker.port),
+                rack: None, // TODO
+            };
+            if Some(&broker_info.host) == address.as_ref() {
+                client.conns_by_id.insert(broker.node_id, channel.clone());
+            }
             client.brokers.insert(
                 broker.node_id,
-                BrokerInfo {
-                    node_id: broker.node_id,
-                    host: std::str::from_utf8(broker.host.0.as_ref())
-                        .map_err(KafkaError::from)?
-                        .to_string(),
-                    port: broker.port,
-                    rack: None, // TODO
-                },
+                broker_info,
             );
         }
 
