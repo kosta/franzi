@@ -101,27 +101,62 @@ pub struct RecordHeader {
 
 #[cfg(test)]
 mod tests {
-    use franzi_base::FromKafkaBytes;
-    use std::io::Cursor;
     use super::*;
+    use franzi_base::FromKafkaBytes;
+    use lazy_static::lazy_static;
+    use std::io::Cursor;
 
-    /// byte pattern stolen from sarama
-    #[test]
-    pub fn empty_message() {
-        let expected = Records {
-            batch_length: 49,
-            magic: 2,
-            crc: 1499445213,
-            records: Some(Vec::new()),
-            ..Default::default()
-        };
-        let encoded: &[u8] = &[
-            0, 0, 0, 0, 0, 0, 0, 0, // First Offset
+    struct Test {
+        name: &'static str,
+        expected: Records,
+        encoded: &'static [u8],
+    }
+
+    lazy_static! {
+        static ref TESTS: [Test; 2] = [
+        Test {
+            name: "empty message",
+            expected: Records {
+                batch_length: 49,
+                magic: 2,
+                crc: 1499445213,
+                records: Some(Vec::new()),
+                ..Default::default()
+            },
+            encoded: &[
+                0, 0, 0, 0, 0, 0, 0, 0, // First Offset
+                0, 0, 0, 49, // Length
+                0, 0, 0, 0, // Partition Leader Epoch
+                2, // Version
+                89, 95, 183, 221, // CRC
+                0, 0, // Attributes
+                0, 0, 0, 0, // Last Offset Delta
+                0, 0, 0, 0, 0, 0, 0, 0, // First Timestamp
+                0, 0, 0, 0, 0, 0, 0, 0, // Max Timestamp
+                0, 0, 0, 0, 0, 0, 0, 0, // Producer ID
+                0, 0, // Producer Epoch
+                0, 0, 0, 0, // First Sequence
+                0, 0, 0, 0, // Number of Records
+            ],
+        },
+        Test {
+            // TODO: assert!(test.attributes.is_control_batch())
+            name: "control batch",
+            expected: Records {
+                batch_length: 49,
+                magic: 2,
+                crc: 1361986521,
+                attributes: 32,
+                records: Some(Vec::new()),
+                ..Default::default()
+            },
+            encoded: &[
+                            0, 0, 0, 0, 0, 0, 0, 0, // First Offset
             0, 0, 0, 49, // Length
             0, 0, 0, 0, // Partition Leader Epoch
-            2, // Version
-            89, 95, 183, 221, // CRC
-            0, 0, // Attributes
+            2,               // Version
+            81, 46, 67, 217, // CRC
+            0, 32, // Attributes
             0, 0, 0, 0, // Last Offset Delta
             0, 0, 0, 0, 0, 0, 0, 0, // First Timestamp
             0, 0, 0, 0, 0, 0, 0, 0, // Max Timestamp
@@ -129,7 +164,21 @@ mod tests {
             0, 0, // Producer Epoch
             0, 0, 0, 0, // First Sequence
             0, 0, 0, 0, // Number of Records
-        ];
-        assert_eq!(expected, Records::read(&mut Cursor::new(encoded.into())).unwrap());
+            ]
+        }
+    ];
+    }
+
+    /// byte pattern stolen from sarama
+    #[test]
+    pub fn test_records() {
+        for test in &*TESTS {
+            assert_eq!(
+                test.expected,
+                Records::read(&mut Cursor::new(test.encoded.into())).unwrap(),
+                "{}",
+                test.name
+            );
+        }
     }
 }
