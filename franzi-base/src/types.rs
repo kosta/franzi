@@ -135,7 +135,7 @@ impl ToKafkaBytes for u32 {
 /// VARINT	Represents an integer between -2^31 and 2^31-1 inclusive. Encoding follows the variable-length zig-zag encoding from Google Protocol Buffers.
 
 #[allow(non_camel_case_types)]
-#[derive(Debug)]
+#[derive(Debug, Eq, PartialEq)]
 pub struct vi32(pub i32);
 
 impl FromKafkaBytes for vi32 {
@@ -169,7 +169,7 @@ impl From<vi32> for i32 {
 /// VARLONG	Represents an integer between -2^63 and 2^63-1 inclusive. Encoding follows the variable-length zig-zag encoding from Google Protocol Buffers.
 
 #[allow(non_camel_case_types)]
-#[derive(Debug)]
+#[derive(Debug, Eq, PartialEq)]
 pub struct vi64(pub i64);
 
 impl FromKafkaBytes for vi64 {
@@ -300,7 +300,7 @@ impl ToKafkaBytes for Bytes {
 }
 
 /// Bytes prefixed by a varint lenght. Used in `Record` etc.
-#[derive(Debug)]
+#[derive(Debug, Eq, PartialEq)]
 pub struct VarintBytes(pub Bytes);
 
 impl FromKafkaBytes for VarintBytes {

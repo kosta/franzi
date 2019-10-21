@@ -30,7 +30,7 @@ use franzi_base::types::{vi64, VarintBytes};
 ///
 /// See also http://kafka.apache.org/documentation/#upgrade_11_message_format
 /// and https://cwiki.apache.org/confluence/display/KAFKA/KIP-98+-+Exactly+Once+Delivery+and+Transactional+Messaging#KIP-98-ExactlyOnceDeliveryandTransactionalMessaging-MessageFormat
-#[derive(FromKafkaBytes, ToKafkaBytes, Debug)]
+#[derive(FromKafkaBytes, ToKafkaBytes, Debug, PartialEq, Eq)]
 pub struct Records {
     pub base_offset: i64,
     pub batch_length: i32,
@@ -72,7 +72,7 @@ pub struct Records {
 /// value: byte[]
 /// Headers => [Header]
 /// ```
-#[derive(FromKafkaBytes, ToKafkaBytes, Debug)]
+#[derive(FromKafkaBytes, ToKafkaBytes, Debug, PartialEq, Eq)]
 pub struct Record {
     pub length: vi64,
     ///bit 0~7: unused
@@ -90,7 +90,7 @@ pub struct Record {
 /// headerValueLength: varint
 /// Value: byte[]
 /// ```
-#[derive(FromKafkaBytes, ToKafkaBytes, Debug)]
+#[derive(FromKafkaBytes, ToKafkaBytes, Debug, PartialEq, Eq)]
 pub struct RecordHeader {
     pub header_key: VarintBytes,
     pub value: VarintBytes,

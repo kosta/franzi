@@ -15,6 +15,7 @@ pub mod describe_acls;
 pub mod describe_configs;
 pub mod describe_groups;
 pub mod end_txn;
+pub mod fetch;
 pub mod find_coordinator;
 pub mod heartbeat;
 pub mod init_producer_id;

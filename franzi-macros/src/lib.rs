@@ -49,7 +49,8 @@ fn primitive_type(kafka_name: &str) -> Option<&'static str> {
         "NULLABLE_STRING" => Some("Option<::franzi_base::types::KafkaString>"),
         "BYTES" => Some("::bytes::Bytes"),
         "NULLABLE_BYTES" => Some("Option<::bytes::Bytes>"),
-        "RECORDS" => Some("::franzi_base::types::Records"),
+        // TODO: This does not work for invocations outside of franzi-proto crate...
+        "RECORDS" => Some("franzi_proto::record::Records"),
         "ARRAY" => Some("Option<Vec>"),
         _ => None,
     }
@@ -280,7 +281,7 @@ pub fn kafka_message(input: proc_macro::TokenStream) -> proc_macro::TokenStream 
             let field_type = &field2type
                 .get(*field)
                 .unwrap_or_else(|| panic!("field2type[{:?}]", field));
-            let field_type = dbg!(to_rust_type(&state.field2is_array, field, dbg!(field_type)));
+            let field_type = to_rust_type(&state.field2is_array, field, field_type);
             let comment = state
                 .field2comment
                 .get(*field)
