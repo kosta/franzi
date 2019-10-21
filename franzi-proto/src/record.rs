@@ -30,7 +30,7 @@ use franzi_base::types::{vi64, VarintBytes};
 ///
 /// See also http://kafka.apache.org/documentation/#upgrade_11_message_format
 /// and https://cwiki.apache.org/confluence/display/KAFKA/KIP-98+-+Exactly+Once+Delivery+and+Transactional+Messaging#KIP-98-ExactlyOnceDeliveryandTransactionalMessaging-MessageFormat
-#[derive(FromKafkaBytes, ToKafkaBytes, Debug, PartialEq, Eq)]
+#[derive(FromKafkaBytes, ToKafkaBytes, Default, Debug, PartialEq, Eq)]
 pub struct Records {
     pub base_offset: i64,
     pub batch_length: i32,
@@ -98,3 +98,38 @@ pub struct RecordHeader {
 
 // TODO: Implement old MessageSets
 // see http://kafka.apache.org/documentation/#messageset
+
+#[cfg(test)]
+mod tests {
+    use franzi_base::FromKafkaBytes;
+    use std::io::Cursor;
+    use super::*;
+
+    /// byte pattern stolen from sarama
+    #[test]
+    pub fn empty_message() {
+        let expected = Records {
+            batch_length: 49,
+            magic: 2,
+            crc: 1499445213,
+            records: Some(Vec::new()),
+            ..Default::default()
+        };
+        let encoded: &[u8] = &[
+            0, 0, 0, 0, 0, 0, 0, 0, // First Offset
+            0, 0, 0, 49, // Length
+            0, 0, 0, 0, // Partition Leader Epoch
+            2, // Version
+            89, 95, 183, 221, // CRC
+            0, 0, // Attributes
+            0, 0, 0, 0, // Last Offset Delta
+            0, 0, 0, 0, 0, 0, 0, 0, // First Timestamp
+            0, 0, 0, 0, 0, 0, 0, 0, // Max Timestamp
+            0, 0, 0, 0, 0, 0, 0, 0, // Producer ID
+            0, 0, // Producer Epoch
+            0, 0, 0, 0, // First Sequence
+            0, 0, 0, 0, // Number of Records
+        ];
+        assert_eq!(expected, Records::read(&mut Cursor::new(encoded.into())).unwrap());
+    }
+}

@@ -207,18 +207,19 @@ impl Cluster {
         for broker in response.brokers.unwrap_or_default() {
             let broker_info = BrokerInfo {
                 node_id: broker.node_id,
-                host: format!("{}:{}", std::str::from_utf8(broker.host.0.as_ref())
-                    .map_err(KafkaError::from)?
-                    .to_string(), broker.port),
+                host: format!(
+                    "{}:{}",
+                    std::str::from_utf8(broker.host.0.as_ref())
+                        .map_err(KafkaError::from)?
+                        .to_string(),
+                    broker.port
+                ),
                 rack: None, // TODO
             };
             if Some(&broker_info.host) == address.as_ref() {
                 client.conns_by_id.insert(broker.node_id, channel.clone());
             }
-            client.brokers.insert(
-                broker.node_id,
-                broker_info,
-            );
+            client.brokers.insert(broker.node_id, broker_info);
         }
 
         Ok(client)
