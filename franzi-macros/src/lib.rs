@@ -1,4 +1,8 @@
 #![forbid(unsafe_code)]
+#![warn(clippy::all)]
+//TODO: Re-enable once you got the time to fix this
+//#![warn(clippy::pedantic)]
+//#![warn(clippy::cargo)]
 
 extern crate proc_macro;
 
@@ -233,11 +237,12 @@ pub fn kafka_message(input: proc_macro::TokenStream) -> proc_macro::TokenStream 
                 // single field
                 if let Some(primitive_type) = primitive_type(fields_or_type[0]) {
                     // eprintln!("field {:?} has primitive type {:?}", name, primitive_type);
-                    let rust_type = to_rust_type(&state.field2is_array, name, primitive_type);
-                    let existing = field2type.insert(name.to_string(), rust_type.clone());
+                    // let rust_type = dbg!(to_rust_type(&state.field2is_array, name, primitive_type));
+                    // Note: whether or not it is an array is handled further below...
+                    let existing = field2type.insert(name.to_string(), primitive_type.to_string());
                     if let Some(existing) = existing {
                         assert_eq!(
-                            existing, rust_type,
+                            existing, primitive_type,
                             "Expected identical type of field {:?} that appears twice",
                             name
                         );
@@ -275,7 +280,7 @@ pub fn kafka_message(input: proc_macro::TokenStream) -> proc_macro::TokenStream 
             let field_type = &field2type
                 .get(*field)
                 .unwrap_or_else(|| panic!("field2type[{:?}]", field));
-            let field_type = to_rust_type(&state.field2is_array, field, field_type);
+            let field_type = dbg!(to_rust_type(&state.field2is_array, field, dbg!(field_type)));
             let comment = state
                 .field2comment
                 .get(*field)

@@ -1,9 +1,14 @@
 #![forbid(unsafe_code)]
+#![warn(clippy::all)]
+//TODO: Re-enable once you got the time to fix this
+//#![warn(clippy::pedantic)]
+//#![warn(clippy::cargo)]
 
 #[macro_use]
 extern crate franzi_macros;
 
 pub mod errors;
+pub mod exchange;
 pub mod header;
 pub mod messages;
 pub mod record;

@@ -1,11 +1,15 @@
 #![forbid(unsafe_code)]
+#![warn(clippy::all)]
+//TODO: Re-enable once you got the time to fix this
+//#![warn(clippy::pedantic)]
+//#![warn(clippy::cargo)]
 
 pub mod api_keys;
 pub mod types;
 pub(crate) mod varint;
 
 use bytes::{BufMut, Bytes};
-use futures::channel::oneshot::Canceled;
+use futures::channel::{mpsc::SendError, oneshot::Canceled};
 use std::fmt;
 use std::io;
 use std::io::Cursor;
@@ -63,8 +67,10 @@ pub enum Error {
     FromBytesError,
     ToBytesError,
     Canceled,
-    ProtocolError(i16),
-    IoError(io::Error),
+    SendError,
+    Protocol(i16),
+    Io(io::Error),
+    Utf8(std::str::Utf8Error),
 }
 
 impl From<FromBytesError> for Error {
@@ -85,16 +91,28 @@ impl From<Canceled> for Error {
     }
 }
 
+impl From<SendError> for Error {
+    fn from(_: SendError) -> Self {
+        Error::SendError
+    }
+}
+
 impl From<io::Error> for Error {
     fn from(e: io::Error) -> Self {
-        Error::IoError(e)
+        Error::Io(e)
+    }
+}
+
+impl From<std::str::Utf8Error> for Error {
+    fn from(e: std::str::Utf8Error) -> Self {
+        Error::Utf8(e)
     }
 }
 
 impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
-            Error::ProtocolError(code) => write!(f, "protocol error response {}", code),
+            Error::Protocol(code) => write!(f, "protocol error response {}", code),
             _ => write!(f, "{}", std::error::Error::description(self)),
         }
     }
@@ -106,8 +124,10 @@ impl std::error::Error for Error {
             Error::FromBytesError => "error reading kafka message",
             Error::ToBytesError => "error writing kafka message",
             Error::Canceled => "response Canceled (connection closed)",
-            Error::ProtocolError(_) => "protocol error response",
-            Error::IoError(e) => e.description(),
+            Error::SendError => "broker channel closed (connection closed)",
+            Error::Protocol(_) => "protocol error response",
+            Error::Io(e) => e.description(),
+            Error::Utf8(_) => "utf8 error",
         }
     }
     fn cause(&self) -> Option<&dyn std::error::Error> {
