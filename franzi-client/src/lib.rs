@@ -233,6 +233,8 @@ impl Cluster {
         // select a random (hopefully) established connection
         // use conns_by_host because conns_by_id does not need to be filled
         // TODO: if that connection is down, we probably need to timeout and try other connections if possible
+        // Idea: we can timeout on the `tx.send(request)` and select another (connected) broker,
+        // so we can choose a smaller timeout than if we timeout on `response.await`
         let mut tx = self
             .conns_by_host
             .values()
