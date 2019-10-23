@@ -14,10 +14,18 @@ use std::fmt;
 use std::io;
 use std::io::Cursor;
 
-pub use varint::{read_varu64, read_vari64, write_varu64, write_vari64};
+pub use varint::{read_vari64, read_varu64, write_vari64, write_varu64};
 
 #[derive(Debug)]
-pub struct FromBytesError;
+pub enum FromBytesError {
+    UnexpectedEOF,
+    UnexpectedNull,
+    UnknownMagicByte(i8),
+    UnknownCompression(i8),
+    VarIntOverflow,
+    Unimplemented(&'static str),
+    DecompressionError(io::Error),
+}
 
 #[derive(Debug)]
 pub struct ToBytesError;

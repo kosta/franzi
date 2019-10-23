@@ -12,7 +12,7 @@ use crate::{varint, FromBytesError, FromKafkaBytes, ToKafkaBytes};
 impl FromKafkaBytes for bool {
     fn read(bytes: &mut Cursor<Bytes>) -> Result<Self, FromBytesError> {
         if bytes.remaining() < size_of::<Self>() {
-            return Err(FromBytesError);
+            return Err(FromBytesError::UnexpectedEOF);
         }
         Ok(bytes.get_u8() != 0)
     }
@@ -33,7 +33,7 @@ impl ToKafkaBytes for bool {
 impl FromKafkaBytes for i8 {
     fn read(bytes: &mut Cursor<Bytes>) -> Result<Self, FromBytesError> {
         if bytes.remaining() < size_of::<Self>() {
-            return Err(FromBytesError);
+            return Err(FromBytesError::UnexpectedEOF);
         }
         Ok(bytes.get_i8())
     }
@@ -54,7 +54,7 @@ impl ToKafkaBytes for i8 {
 impl FromKafkaBytes for i16 {
     fn read(bytes: &mut Cursor<Bytes>) -> Result<Self, FromBytesError> {
         if bytes.remaining() < size_of::<Self>() {
-            return Err(FromBytesError);
+            return Err(FromBytesError::UnexpectedEOF);
         }
         Ok(bytes.get_i16_be())
     }
@@ -75,7 +75,7 @@ impl ToKafkaBytes for i16 {
 impl FromKafkaBytes for i32 {
     fn read(bytes: &mut Cursor<Bytes>) -> Result<Self, FromBytesError> {
         if bytes.remaining() < size_of::<Self>() {
-            return Err(FromBytesError);
+            return Err(FromBytesError::UnexpectedEOF);
         }
         Ok(bytes.get_i32_be())
     }
@@ -95,7 +95,7 @@ impl ToKafkaBytes for i32 {
 impl FromKafkaBytes for i64 {
     fn read(bytes: &mut Cursor<Bytes>) -> Result<Self, FromBytesError> {
         if bytes.remaining() < size_of::<Self>() {
-            return Err(FromBytesError);
+            return Err(FromBytesError::UnexpectedEOF);
         }
         Ok(bytes.get_i64_be())
     }
@@ -116,7 +116,7 @@ impl ToKafkaBytes for i64 {
 impl FromKafkaBytes for u32 {
     fn read(bytes: &mut Cursor<Bytes>) -> Result<Self, FromBytesError> {
         if bytes.remaining() < size_of::<Self>() {
-            return Err(FromBytesError);
+            return Err(FromBytesError::UnexpectedEOF);
         }
         Ok(bytes.get_u32_be())
     }
@@ -228,7 +228,8 @@ impl From<String> for KafkaString {
 
 impl FromKafkaBytes for KafkaString {
     fn read(bytes: &mut Cursor<Bytes>) -> Result<Self, FromBytesError> {
-        <Option<KafkaString> as FromKafkaBytes>::read(bytes).and_then(|s| s.ok_or(FromBytesError))
+        <Option<KafkaString> as FromKafkaBytes>::read(bytes)
+            .and_then(|s| s.ok_or(FromBytesError::UnexpectedNull))
     }
 }
 
@@ -254,7 +255,7 @@ impl FromKafkaBytes for Option<KafkaString> {
         }
         let len = len as usize;
         if bytes.remaining() < len {
-            return Err(FromBytesError);
+            return Err(FromBytesError::UnexpectedEOF);
         }
         let pos = bytes.position() as usize;
         let s = KafkaString(bytes.get_ref().slice(pos, pos + len));
@@ -283,7 +284,8 @@ impl ToKafkaBytes for Option<KafkaString> {
 
 impl FromKafkaBytes for Bytes {
     fn read(bytes: &mut Cursor<Bytes>) -> Result<Self, FromBytesError> {
-        <Option<Bytes> as FromKafkaBytes>::read(bytes).and_then(|s| s.ok_or(FromBytesError))
+        <Option<Bytes> as FromKafkaBytes>::read(bytes)
+            .and_then(|s| s.ok_or(FromBytesError::UnexpectedNull))
     }
 }
 
@@ -311,7 +313,7 @@ impl FromKafkaBytes for VarintBytes {
         }
         let len = len as usize;
         if bytes.remaining() < len {
-            return Err(FromBytesError);
+            return Err(FromBytesError::UnexpectedEOF);
         }
         let pos = bytes.position() as usize;
         let s = bytes.get_ref().slice(pos, pos + len);
@@ -364,7 +366,7 @@ impl FromKafkaBytes for Option<Bytes> {
         }
         let len = len as usize;
         if bytes.remaining() < len {
-            return Err(FromBytesError);
+            return Err(FromBytesError::UnexpectedEOF);
         }
         let pos = bytes.position() as usize;
         let s = bytes.get_ref().slice(pos, pos + len);

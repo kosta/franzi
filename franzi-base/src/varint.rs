@@ -13,7 +13,7 @@ use crate::FromBytesError;
 
 fn read_u8(bytes: &mut Cursor<Bytes>) -> Result<u8, FromBytesError> {
     if bytes.remaining() < size_of::<u8>() {
-        return Err(FromBytesError);
+        return Err(FromBytesError::UnexpectedEOF);
     }
     Ok(bytes.get_u8())
 }
@@ -59,7 +59,7 @@ pub fn read_varint32(bytes: &mut Cursor<Bytes>) -> Result<u32, FromBytesError> {
     }
 
     // cannot read more than 10 bytes
-    Err(FromBytesError)
+    Err(FromBytesError::VarIntOverflow)
 }
 
 /// Reads the next varint encoded u64
@@ -129,7 +129,7 @@ pub fn read_varu64(bytes: &mut Cursor<Bytes>) -> Result<u64, FromBytesError> {
     }
 
     // cannot read more than 10 bytes
-    Err(FromBytesError)
+    Err(FromBytesError::VarIntOverflow)
 }
 
 pub fn read_vari64(bytes: &mut Cursor<Bytes>) -> Result<i64, FromBytesError> {
@@ -137,7 +137,7 @@ pub fn read_vari64(bytes: &mut Cursor<Bytes>) -> Result<i64, FromBytesError> {
     let x = (u as i64) >> 1;
     let negative = u & 1;
     if negative != 0 {
-        Ok(x^-1)
+        Ok(x ^ -1)
     } else {
         Ok(x)
     }
@@ -178,23 +178,23 @@ pub fn write_vari64(bytes: &mut dyn BufMut, v: i64) {
 
 #[cfg(test)]
 mod tests {
+    use super::*;
     use bytes::BytesMut;
     use quickcheck::quickcheck;
-    use super::*;
 
     const UNSIGNED: &[(u64, &[u8])] = &[
         (1, &[0x01]),
         (2, &[0x02]),
         (127, &[0x7f]),
-        (128, &[0x80,0x01]),
-        (255, &[0xff,0x01]),
-        (256, &[0x80,0x02]),
-        (4223,&[0xff,0x20]),
+        (128, &[0x80, 0x01]),
+        (255, &[0xff, 0x01]),
+        (256, &[0x80, 0x02]),
+        (4223, &[0xff, 0x20]),
     ];
 
     const SIGNED: &[(i64, &[u8])] = &[
-        (-7331, &[0xc5,0x72]),
-        (-65, &[0x81,0x01]),
+        (-7331, &[0xc5, 0x72]),
+        (-65, &[0x81, 0x01]),
         (-64, &[0x7f]),
         (-2, &[0x03]),
         (-1, &[0x01]),
@@ -202,14 +202,19 @@ mod tests {
         (1, &[0x02]),
         (2, &[0x04]),
         (63, &[0x7e]),
-        (64, &[0x80,0x01]),
-        (4223,&[0xfe,0x41]),
+        (64, &[0x80, 0x01]),
+        (4223, &[0xfe, 0x41]),
     ];
 
     #[test]
     fn read_vari64() {
         for test in SIGNED {
-            assert_eq!(test.0, super::read_vari64(&mut Cursor::new(test.1.into())).unwrap(), "{:?}", test);
+            assert_eq!(
+                test.0,
+                super::read_vari64(&mut Cursor::new(test.1.into())).unwrap(),
+                "{:?}",
+                test
+            );
         }
     }
 
@@ -225,7 +230,12 @@ mod tests {
     #[test]
     fn read_varu64() {
         for test in UNSIGNED {
-            assert_eq!(test.0, super::read_varu64(&mut Cursor::new(test.1.into())).unwrap(), "{:?}", test);
+            assert_eq!(
+                test.0,
+                super::read_varu64(&mut Cursor::new(test.1.into())).unwrap(),
+                "{:?}",
+                test
+            );
         }
     }
 

@@ -4,7 +4,41 @@ use franzi_base::{
     types::{vi64, VarintBytes},
 };
 use franzi_base::{FromBytesError, FromKafkaBytes, ToKafkaBytes};
-use std::io::Cursor;
+use std::{convert::TryFrom, io::Cursor};
+
+#[derive(Debug, PartialEq, Eq)]
+pub enum Records {
+    V2(RecordsV2),
+}
+
+impl FromKafkaBytes for Records {
+    fn read(bytes: &mut Cursor<Bytes>) -> Result<Self, FromBytesError> {
+        let magic_byte = *bytes
+            .get_ref()
+            .get(bytes.position() as usize + 16)
+            .ok_or(FromBytesError::UnexpectedEOF)? as i8;
+        match magic_byte {
+            0 => Err(FromBytesError::Unimplemented(
+                "Records with magic_byte (version) 0",
+            )),
+            1 => Err(FromBytesError::Unimplemented(
+                "Records with magic_byte (version) 1",
+            )),
+            2 => Ok(Records::V2(RecordsV2::read(bytes)?)),
+            _ => Err(FromBytesError::UnknownMagicByte(magic_byte)),
+        }
+    }
+}
+
+impl ToKafkaBytes for Records {
+    fn len_to_write(&self) -> usize {
+        unimplemented!("TODO: Records::len_to_write")
+    }
+
+    fn write(&self, _bytes: &mut dyn BufMut) {
+        unimplemented!("TODO: Records::write")
+    }
+}
 
 /// RECORDS	Represents a sequence of Kafka records as NULLABLE_BYTES.
 /// [Kafka Spec](http://kafka.apache.org/documentation/#recordbatch):
@@ -37,7 +71,7 @@ use std::io::Cursor;
 /// See also http://kafka.apache.org/documentation/#upgrade_11_message_format
 /// and https://cwiki.apache.org/confluence/display/KAFKA/KIP-98+-+Exactly+Once+Delivery+and+Transactional+Messaging#KIP-98-ExactlyOnceDeliveryandTransactionalMessaging-MessageFormat
 #[derive(FromKafkaBytes, ToKafkaBytes, Default, Debug, PartialEq, Eq)]
-pub struct Records {
+pub struct RecordsV2Head {
     pub base_offset: i64,
     pub batch_length: i32,
     pub partition_leader_epoch: i32,
@@ -61,7 +95,80 @@ pub struct Records {
     pub producer_id: i64,
     pub producer_epoch: i16,
     pub base_sequence: i32,
-    pub records: Option<Vec<Record>>,
+}
+
+#[derive(Copy, Clone, Debug)]
+pub enum Compression {
+    None,
+    Gzip,
+    Snappy,
+    Lz4,
+    Zstd,
+}
+
+impl TryFrom<i16> for Compression {
+    type Error = i8;
+
+    fn try_from(attributes: i16) -> Result<Compression, i8> {
+        use Compression::*;
+        match attributes & 0b111 {
+            0 => Ok(None),
+            1 => Ok(Gzip),
+            2 => Ok(Snappy),
+            3 => Ok(Lz4),
+            4 => Ok(Zstd),
+            x => Err(x as i8),
+        }
+    }
+}
+
+impl Compression {
+    pub fn decompress(&self, bytes: &mut Cursor<Bytes>) -> Result<Bytes, FromBytesError> {
+        use Compression::*;
+        let pos = bytes.position() as usize;
+        match self {
+            None => Ok(bytes.get_ref().slice_from(pos)),
+            Gzip => {
+                use flate2::read::GzDecoder;
+                use std::io::Read;
+                let mut gz = GzDecoder::new(&bytes.get_ref()[pos..]);
+                let mut decompressed = Vec::new();
+                gz.read_to_end(&mut decompressed).map_err(|e| FromBytesError::DecompressionError(e))?;
+                Ok(decompressed.into())
+            }
+            Snappy => Err(FromBytesError::Unimplemented("decompress Snappy")),
+            Lz4 => Err(FromBytesError::Unimplemented("decompress Lz4")),
+            Zstd => Err(FromBytesError::Unimplemented("decompress Zstd")),
+        }
+    }
+}
+
+#[derive(Default, Debug, PartialEq, Eq)]
+pub struct RecordsV2 {
+    pub head: RecordsV2Head,
+    pub records: Vec<Record>,
+}
+
+impl FromKafkaBytes for RecordsV2 {
+    fn read(bytes: &mut Cursor<Bytes>) -> Result<Self, FromBytesError> {
+        let head: RecordsV2Head = FromKafkaBytes::read(bytes)?;
+        if head.magic != 2 {
+            return Err(FromBytesError::UnknownMagicByte(head.magic));
+        }
+        let records_len: i32 = FromKafkaBytes::read(bytes)?;
+        let mut records = Vec::with_capacity(usize::try_from(records_len).unwrap_or_default());
+        if records_len > 0 {
+            let compression = Compression::try_from(head.attributes)
+                .map_err(|x| FromBytesError::UnknownCompression(x))?;
+            let decompressed_bytes = compression.decompress(bytes)?;
+            let mut decompressed = Cursor::new(decompressed_bytes);
+
+            for _ in 0..records_len {
+                records.push(Record::read(&mut decompressed)?);
+            }
+        }
+        Ok(RecordsV2 { head, records })
+    }
 }
 
 /// RECORDS	Represents a sequence of Kafka records as NULLABLE_BYTES.
@@ -92,21 +199,14 @@ pub struct Record {
 
 impl FromKafkaBytes for Record {
     fn read(bytes: &mut Cursor<Bytes>) -> Result<Self, FromBytesError> {
-        let length = vi64::read(bytes)?;
-        let attributes = i8::read(bytes)?;
-        let timestamp_delta = vi64::read(bytes)?;
-        let offset_delta = vi64::read(bytes)?;
-        let key = VarintBytes::read(bytes)?;
-        let value = VarintBytes::read(bytes)?;
-        let headers = read_varint_vec(bytes)?;
         Ok(Record {
-            length,
-            attributes,
-            timestamp_delta,
-            offset_delta,
-            key,
-            value,
-            headers,
+            length: vi64::read(bytes)?,
+            attributes: i8::read(bytes)?,
+            timestamp_delta: vi64::read(bytes)?,
+            offset_delta: vi64::read(bytes)?,
+            key: VarintBytes::read(bytes)?,
+            value: VarintBytes::read(bytes)?,
+            headers: read_varint_vec(bytes)?,
         })
     }
 }
@@ -166,16 +266,18 @@ mod tests {
     }
 
     lazy_static! {
-        static ref TESTS: [Test; 3] = [
+        static ref TESTS: [Test; 4] = [
         Test {
             name: "empty message",
-            expected: Records {
-                batch_length: 49,
-                magic: 2,
-                crc: 1499445213,
-                records: Some(Vec::new()),
-                ..Default::default()
-            },
+            expected: Records::V2(RecordsV2{
+                head: RecordsV2Head {
+                    batch_length: 49,
+                    magic: 2,
+                    crc: 1499445213,
+                    ..Default::default()
+                },
+                records: Vec::new(),
+            }),
             encoded: &[
                 0, 0, 0, 0, 0, 0, 0, 0, // First Offset
                 0, 0, 0, 49, // Length
@@ -195,14 +297,16 @@ mod tests {
         Test {
             // TODO: assert!(test.attributes.is_control_batch())
             name: "control batch",
-            expected: Records {
+            expected: Records::V2(RecordsV2{
+                head: RecordsV2Head {
                 batch_length: 49,
                 magic: 2,
                 crc: 1361986521,
                 attributes: 32,
-                records: Some(Vec::new()),
                 ..Default::default()
-            },
+                },
+                records: Vec::new(),
+            }),
             encoded: &[
                 0, 0, 0, 0, 0, 0, 0, 0, // First Offset
                 0, 0, 0, 49, // Length
@@ -221,14 +325,17 @@ mod tests {
         },
         Test {
             name: "uncompressed record",
-            expected: Records{
+            expected: Records::V2(RecordsV2{
+                head: RecordsV2Head {
                 batch_length: 70,
                 magic: 2,
                 crc: 1417241085,
                 first_timestamp: 1479847795000,
                 max_timestamp: 0,
                 last_offset_delta: 0,
-                records: Some(vec![
+                ..Default::default()
+                },
+                records: vec![
                     Record{
                         length: vi64(20),
                         timestamp_delta: 5.into(),
@@ -242,9 +349,8 @@ mod tests {
                         ],
                         ..Default::default()
                     }
-                ]),
-                ..Default::default()
-            },
+                ],
+            }),
             encoded: &[
                 0, 0, 0, 0, 0, 0, 0, 0, // First Offset
                 0, 0, 0, 70, // Length
@@ -274,6 +380,53 @@ mod tests {
                 11, 12, // Header Value
             ],
         },
+        Test {
+            name: "gzip compressed record",
+            expected: Records::V2(RecordsV2{
+                head: RecordsV2Head {
+                    batch_length: 94,
+                    magic: 2,
+                    crc: -1611876675,
+                    attributes: 1,
+                    first_timestamp: 1479847795000,
+                    max_timestamp: 0,
+                    last_offset_delta: 0,
+                    ..Default::default()
+                },
+                records: vec![
+                    Record{
+                        length: vi64(20),
+                        timestamp_delta: 5.into(),
+                        key: Bytes::from(&[1, 2, 3, 4][..]).into(),
+                        value: Bytes::from(&[5, 6, 7][..]).into(),
+                        headers: vec![
+                            RecordHeader{
+                                key: Bytes::from(&[8, 9, 10][..]).into(),
+                                value: Bytes::from(&[11, 12][..]).into(),
+                            }
+                        ],
+                        ..Default::default()
+                    }
+                ],
+            }),
+            encoded: &[
+                0, 0, 0, 0, 0, 0, 0, 0, // First Offset
+                0, 0, 0, 94, // Length
+                0, 0, 0, 0, // Partition Leader Epoch
+                2,                  // Version
+                159, 236, 182, 189, // CRC
+                0, 1, // Attributes
+                0, 0, 0, 0, // Last Offset Delta
+                0, 0, 1, 88, 141, 205, 89, 56, // First Timestamp
+                0, 0, 0, 0, 0, 0, 0, 0, // Max Timestamp
+                0, 0, 0, 0, 0, 0, 0, 0, // Producer ID
+                0, 0, // Producer Epoch
+                0, 0, 0, 0, // First Sequence
+                0, 0, 0, 1, // Number of Records
+                31, 139, 8, 0, 0, 0, 0, 0, 0, 255, 210, 96, 224, 98, 224, 96, 100, 98, 102, 97, 99, 101,
+                99, 103, 98, 227, 224, 228, 98, 225, 230, 1, 4, 0, 0, 255, 255, 173, 201, 88, 103, 21, 0, 0, 0,
+            ],
+        }
         ];
     }
 
