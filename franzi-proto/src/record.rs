@@ -1,5 +1,8 @@
 use bytes::{BufMut, Bytes};
-use franzi_base::{read_vari64, types::{vi64, VarintBytes}};
+use franzi_base::{
+    read_vari64,
+    types::{vi64, VarintBytes},
+};
 use franzi_base::{FromBytesError, FromKafkaBytes, ToKafkaBytes};
 use std::io::Cursor;
 
@@ -89,14 +92,14 @@ pub struct Record {
 
 impl FromKafkaBytes for Record {
     fn read(bytes: &mut Cursor<Bytes>) -> Result<Self, FromBytesError> {
-        let length = dbg!(vi64::read(bytes)?);
-        let attributes = dbg!(i8::read(bytes)?);
-        let timestamp_delta = dbg!(vi64::read(bytes)?);
-        let offset_delta = dbg!(vi64::read(bytes)?);
-        let key = dbg!(VarintBytes::read(bytes)?);
-        let value = dbg!(VarintBytes::read(bytes)?);
-        let headers = dbg!(read_varint_vec(bytes)?);
-        dbg!(Ok(Record {
+        let length = vi64::read(bytes)?;
+        let attributes = i8::read(bytes)?;
+        let timestamp_delta = vi64::read(bytes)?;
+        let offset_delta = vi64::read(bytes)?;
+        let key = VarintBytes::read(bytes)?;
+        let value = VarintBytes::read(bytes)?;
+        let headers = read_varint_vec(bytes)?;
+        Ok(Record {
             length,
             attributes,
             timestamp_delta,
@@ -104,7 +107,7 @@ impl FromKafkaBytes for Record {
             key,
             value,
             headers,
-        }))
+        })
     }
 }
 
@@ -121,14 +124,14 @@ impl ToKafkaBytes for Record {
 fn read_varint_vec<T: FromKafkaBytes + std::fmt::Debug>(
     bytes: &mut Cursor<Bytes>,
 ) -> Result<Vec<T>, FromBytesError> {
-    let item_len: i64 = dbg!(read_vari64(bytes)?.into());
+    let item_len: i64 = read_vari64(bytes)?.into();
     if item_len < 0 {
         return Ok(Vec::new());
     }
     let item_len = item_len as usize;
     let mut vec = Vec::with_capacity(item_len);
     for _ in 0..item_len {
-        vec.push(dbg!(T::read(bytes)?));
+        vec.push(T::read(bytes)?);
     }
     Ok(vec)
 }
