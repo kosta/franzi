@@ -150,7 +150,7 @@ impl ToKafkaBytes for vi32 {
     }
 
     fn write(&self, bytes: &mut dyn BufMut) {
-        varint::write_varint(bytes, self.0 as u64)
+        varint::write_vari64(bytes, self.0 as i64)
     }
 }
 
@@ -169,12 +169,12 @@ impl From<vi32> for i32 {
 /// VARLONG	Represents an integer between -2^63 and 2^63-1 inclusive. Encoding follows the variable-length zig-zag encoding from Google Protocol Buffers.
 
 #[allow(non_camel_case_types)]
-#[derive(Debug, Eq, PartialEq)]
+#[derive(Debug, Default, Eq, PartialEq)]
 pub struct vi64(pub i64);
 
 impl FromKafkaBytes for vi64 {
     fn read(bytes: &mut Cursor<Bytes>) -> Result<Self, FromBytesError> {
-        Ok(vi64(varint::read_varint64(bytes)? as i64))
+        Ok(vi64(varint::read_vari64(bytes)? as i64))
     }
 }
 
@@ -184,7 +184,7 @@ impl ToKafkaBytes for vi64 {
     }
 
     fn write(&self, bytes: &mut dyn BufMut) {
-        varint::write_varint(bytes, self.0 as u64)
+        varint::write_vari64(bytes, self.0 as i64)
     }
 }
 
@@ -300,12 +300,12 @@ impl ToKafkaBytes for Bytes {
 }
 
 /// Bytes prefixed by a varint lenght. Used in `Record` etc.
-#[derive(Debug, Eq, PartialEq)]
+#[derive(Debug, Default, Eq, PartialEq)]
 pub struct VarintBytes(pub Bytes);
 
 impl FromKafkaBytes for VarintBytes {
     fn read(bytes: &mut Cursor<Bytes>) -> Result<Self, FromBytesError> {
-        let len: i64 = vi64::read(bytes)?.into();
+        let len: i64 = varint::read_vari64(bytes)?.into();
         if len <= 0 {
             return Ok(VarintBytes(Bytes::new()));
         }
@@ -320,6 +320,21 @@ impl FromKafkaBytes for VarintBytes {
     }
 }
 
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    pub fn varint_from_bytes() {
+        const INPUT: &[u8] = &[4, 11, 12];
+        const EXPECTED: &[u8] = &[11, 12];
+        assert_eq!(
+            VarintBytes::from(Bytes::from(EXPECTED)),
+            VarintBytes::read(&mut Cursor::new(INPUT.into())).unwrap(),
+        );
+    }
+}
+
 impl ToKafkaBytes for VarintBytes {
     fn len_to_write(&self) -> usize {
         // TODO: overflow checks?
@@ -328,8 +343,14 @@ impl ToKafkaBytes for VarintBytes {
     }
 
     fn write(&self, bytes: &mut dyn BufMut) {
-        varint::write_varint(bytes, self.0.len() as u64);
+        varint::write_vari64(bytes, self.0.len() as i64);
         bytes.put_slice(self.0.as_ref());
+    }
+}
+
+impl From<Bytes> for VarintBytes {
+    fn from(bytes: Bytes) -> Self {
+        VarintBytes(bytes)
     }
 }
 

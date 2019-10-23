@@ -7,3 +7,6 @@ edition = "2018"
 [dependencies]
 bytes = "0.4.11"
 futures-preview = "0.3.0-alpha.19"
+
+[dev-dependencies]
+quickcheck = "0.9"

@@ -14,6 +14,8 @@ use std::fmt;
 use std::io;
 use std::io::Cursor;
 
+pub use varint::{read_varu64, read_vari64, write_varu64, write_vari64};
+
 #[derive(Debug)]
 pub struct FromBytesError;
 
