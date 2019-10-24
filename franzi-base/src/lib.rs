@@ -17,6 +17,14 @@ use std::io::Cursor;
 pub use varint::{read_vari64, read_varu64, write_vari64, write_varu64};
 
 #[derive(Debug)]
+pub enum DecompressionError {
+    Gzip(io::Error),
+    Snappy(snap::Error),
+    Lz4(io::Error),
+    Zstd(),
+}
+
+#[derive(Debug)]
 pub enum FromBytesError {
     UnexpectedEOF,
     UnexpectedNull,
@@ -24,7 +32,7 @@ pub enum FromBytesError {
     UnknownCompression(i8),
     VarIntOverflow,
     Unimplemented(&'static str),
-    DecompressionError(io::Error),
+    Decompression(DecompressionError),
 }
 
 #[derive(Debug)]

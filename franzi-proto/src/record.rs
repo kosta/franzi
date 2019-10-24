@@ -124,20 +124,31 @@ impl TryFrom<i16> for Compression {
 
 impl Compression {
     pub fn decompress(&self, bytes: &mut Cursor<Bytes>) -> Result<Bytes, FromBytesError> {
+        use franzi_base::DecompressionError;
+        use std::io::Read;
         use Compression::*;
         let pos = bytes.position() as usize;
         match self {
             None => Ok(bytes.get_ref().slice_from(pos)),
             Gzip => {
                 use flate2::read::GzDecoder;
-                use std::io::Read;
                 let mut gz = GzDecoder::new(&bytes.get_ref()[pos..]);
                 let mut decompressed = Vec::new();
-                gz.read_to_end(&mut decompressed).map_err(|e| FromBytesError::DecompressionError(e))?;
+                gz.read_to_end(&mut decompressed)
+                    .map_err(|e| FromBytesError::Decompression(DecompressionError::Gzip(e)))?;
                 Ok(decompressed.into())
             }
-            Snappy => Err(FromBytesError::Unimplemented("decompress Snappy")),
-            Lz4 => Err(FromBytesError::Unimplemented("decompress Lz4")),
+            Snappy => snap::Decoder::new()
+                .decompress_vec(&bytes.get_ref()[pos..])
+                .map(|vec| vec.into())
+                .map_err(|e| FromBytesError::Decompression(DecompressionError::Snappy(e))),
+            Lz4 => {
+                let mut decompressed = Vec::new();
+                lz4::Decoder::new(&bytes.get_ref()[pos..])
+                    .and_then(|mut decoder| decoder.read_to_end(&mut decompressed))
+                    .map_err(|e| FromBytesError::Decompression(DecompressionError::Lz4(e)))?;
+                Ok(decompressed.into())
+            }
             Zstd => Err(FromBytesError::Unimplemented("decompress Zstd")),
         }
     }
@@ -266,7 +277,7 @@ mod tests {
     }
 
     lazy_static! {
-        static ref TESTS: [Test; 4] = [
+        static ref TESTS: [Test; 6] = [
         Test {
             name: "empty message",
             expected: Records::V2(RecordsV2{
@@ -426,7 +437,100 @@ mod tests {
                 31, 139, 8, 0, 0, 0, 0, 0, 0, 255, 210, 96, 224, 98, 224, 96, 100, 98, 102, 97, 99, 101,
                 99, 103, 98, 227, 224, 228, 98, 225, 230, 1, 4, 0, 0, 255, 255, 173, 201, 88, 103, 21, 0, 0, 0,
             ],
-        }
+        },
+        Test {
+            name: "snappy compressed record",
+            expected: Records::V2(RecordsV2{
+                head: RecordsV2Head {
+                    batch_length: 72,
+                    magic: 2,
+                    crc: 352362337,
+                    attributes: 2,
+                    first_timestamp: 1479847795000,
+                    max_timestamp: 0,
+                    last_offset_delta: 0,
+                    ..Default::default()
+                },
+                records: vec![
+                    Record{
+                        length: vi64(20),
+                        timestamp_delta: 5.into(),
+                        key: Bytes::from(&[1, 2, 3, 4][..]).into(),
+                        value: Bytes::from(&[5, 6, 7][..]).into(),
+                        headers: vec![
+                            RecordHeader{
+                                key: Bytes::from(&[8, 9, 10][..]).into(),
+                                value: Bytes::from(&[11, 12][..]).into(),
+                            }
+                        ],
+                        ..Default::default()
+                    }
+                ],
+            }),
+            encoded: &[
+                0, 0, 0, 0, 0, 0, 0, 0, // First Offset
+                0, 0, 0, 72, // Length
+                0, 0, 0, 0, // Partition Leader Epoch
+                2,              // Version
+                21, 0, 159, 97, // CRC
+                0, 2, // Attributes
+                0, 0, 0, 0, // Last Offset Delta
+                0, 0, 1, 88, 141, 205, 89, 56, // First Timestamp
+                0, 0, 0, 0, 0, 0, 0, 0, // Max Timestamp
+                0, 0, 0, 0, 0, 0, 0, 0, // Producer ID
+                0, 0, // Producer Epoch
+                0, 0, 0, 0, // First Sequence
+                0, 0, 0, 1, // Number of Records
+                21, 80, 40, 0, 10, 0, 8, 1, 2, 3, 4, 6, 5, 6, 7, 2, 6, 8, 9, 10, 4, 11, 12,
+            ],
+        },
+        Test {
+            name: "lz4 compressed record",
+            expected: Records::V2(RecordsV2{
+                head: RecordsV2Head {
+                    batch_length: 89,
+                    magic: 2,
+                    crc: -1454737467,
+                    attributes: 3,
+                    first_timestamp: 1479847795000,
+                    max_timestamp: 0,
+                    last_offset_delta: 0,
+                    ..Default::default()
+                },
+                records: vec![
+                    Record{
+                        length: vi64(20),
+                        timestamp_delta: 5.into(),
+                        key: Bytes::from(&[1, 2, 3, 4][..]).into(),
+                        value: Bytes::from(&[5, 6, 7][..]).into(),
+                        headers: vec![
+                            RecordHeader{
+                                key: Bytes::from(&[8, 9, 10][..]).into(),
+                                value: Bytes::from(&[11, 12][..]).into(),
+                            }
+                        ],
+                        ..Default::default()
+                    }
+                ],
+            }),
+            encoded: &[
+                0, 0, 0, 0, 0, 0, 0, 0, // First Offset
+                0, 0, 0, 89, // Length
+                0, 0, 0, 0, // Partition Leader Epoch
+                2,                 // Version
+                169, 74, 119, 197, // CRC
+                0, 3, // Attributes
+                0, 0, 0, 0, // Last Offset Delta
+                0, 0, 1, 88, 141, 205, 89, 56, // First Timestamp
+                0, 0, 0, 0, 0, 0, 0, 0, // Max Timestamp
+                0, 0, 0, 0, 0, 0, 0, 0, // Producer ID
+                0, 0, // Producer Epoch
+                0, 0, 0, 0, // First Sequence
+                0, 0, 0, 1, // Number of Records
+                4, 34, 77, 24, 100, 112, 185, 21, 0, 0, 128, 40, 0, 10, 0, 8, 1, 2, 3, 4, 6, 5, 6, 7, 2,
+                6, 8, 9, 10, 4, 11, 12, 0, 0, 0, 0, 12, 59, 239, 146,
+            ],
+        },
         ];
     }
 
