@@ -21,7 +21,7 @@ pub enum DecompressionError {
     Gzip(io::Error),
     Snappy(snap::Error),
     Lz4(io::Error),
-    Zstd(),
+    Zstd(io::Error),
 }
 
 #[derive(Debug)]

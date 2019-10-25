@@ -149,7 +149,9 @@ impl Compression {
                     .map_err(|e| FromBytesError::Decompression(DecompressionError::Lz4(e)))?;
                 Ok(decompressed.into())
             }
-            Zstd => Err(FromBytesError::Unimplemented("decompress Zstd")),
+            Zstd => zstd::stream::decode_all(&bytes.get_ref()[pos..])
+                .map(|vec| vec.into())
+                .map_err(|e| FromBytesError::Decompression(DecompressionError::Zstd(e))),
         }
     }
 }
@@ -322,7 +324,7 @@ mod tests {
                 0, 0, 0, 0, 0, 0, 0, 0, // First Offset
                 0, 0, 0, 49, // Length
                 0, 0, 0, 0, // Partition Leader Epoch
-                2,               // Version
+                2, // Version
                 81, 46, 67, 217, // CRC
                 0, 32, // Attributes
                 0, 0, 0, 0, // Last Offset Delta
@@ -366,7 +368,7 @@ mod tests {
                 0, 0, 0, 0, 0, 0, 0, 0, // First Offset
                 0, 0, 0, 70, // Length
                 0, 0, 0, 0, // Partition Leader Epoch
-                2,                // Version
+                2, // Version
                 84, 121, 97, 253, // CRC
                 0, 0, // Attributes
                 0, 0, 0, 0, // Last Offset Delta
@@ -377,17 +379,17 @@ mod tests {
                 0, 0, 0, 0, // First Sequence
                 0, 0, 0, 1, // Number of Records
                 40, // Record Length
-                0,  // Attributes
+                0, // Attributes
                 10, // Timestamp Delta
-                0,  // Offset Delta
-                8,  // Key Length
+                0, // Offset Delta
+                8, // Key Length
                 1, 2, 3, 4,
                 6, // Value Length
                 5, 6, 7,
-                2,        // Number of Headers
-                6,        // Header Key Length
+                2, // Number of Headers
+                6, // Header Key Length
                 8, 9, 10, // Header Key
-                4,      // Header Value Length
+                4, // Header Value Length
                 11, 12, // Header Value
             ],
         },
@@ -424,7 +426,7 @@ mod tests {
                 0, 0, 0, 0, 0, 0, 0, 0, // First Offset
                 0, 0, 0, 94, // Length
                 0, 0, 0, 0, // Partition Leader Epoch
-                2,                  // Version
+                2, // Version
                 159, 236, 182, 189, // CRC
                 0, 1, // Attributes
                 0, 0, 0, 0, // Last Offset Delta
@@ -471,7 +473,7 @@ mod tests {
                 0, 0, 0, 0, 0, 0, 0, 0, // First Offset
                 0, 0, 0, 72, // Length
                 0, 0, 0, 0, // Partition Leader Epoch
-                2,              // Version
+                2, // Version
                 21, 0, 159, 97, // CRC
                 0, 2, // Attributes
                 0, 0, 0, 0, // Last Offset Delta
@@ -517,7 +519,7 @@ mod tests {
                 0, 0, 0, 0, 0, 0, 0, 0, // First Offset
                 0, 0, 0, 89, // Length
                 0, 0, 0, 0, // Partition Leader Epoch
-                2,                 // Version
+                2, // Version
                 169, 74, 119, 197, // CRC
                 0, 3, // Attributes
                 0, 0, 0, 0, // Last Offset Delta
@@ -531,6 +533,7 @@ mod tests {
                 6, 8, 9, 10, 4, 11, 12, 0, 0, 0, 0, 12, 59, 239, 146,
             ],
         },
+        // TODO: Test zstd compressed record
         ];
     }
 
