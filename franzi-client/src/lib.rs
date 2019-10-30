@@ -10,7 +10,7 @@ use franzi_base::{types::KafkaString, Error as KafkaError};
 use franzi_proto::{
     exchange,
     exchange::Exchange,
-    messages::metadata::{MetadataRequestV0, MetadataRequestV7, MetadataResponseV7},
+    messages::metadata::{MetadataRequestV7, MetadataResponseV7, MetadataResponseV7_brokers},
 };
 use futures::{channel::mpsc, SinkExt, Stream};
 use rand::seq::{IteratorRandom, SliceRandom};
@@ -36,15 +36,21 @@ pub struct ClusterConfig {
     pub client_id: Bytes,
 }
 
+#[derive(Debug)]
+struct LeaderEpoch {
+    broker_id: i32,
+    leader_epoch: i32,
+}
+
 // TODO: Better Debug formatting...
 #[derive(DebugStub, Default)]
 pub struct Cluster {
     config: ClusterConfig,
     brokers: BTreeMap<i32, BrokerInfo>,
-    topic_leaders: BTreeMap<(String, i32), i32>,
+    topic_leaders: BTreeMap<(String, i32), LeaderEpoch>,
     #[debug_stub = "conns_by_id"]
     conns_by_id: BTreeMap<i32, BrokerChannel>,
-    #[debug_stub = "conns_by_id"]
+    #[debug_stub = "conns_by_host"]
     conns_by_host: BTreeMap<String, BrokerChannel>,
 }
 
@@ -103,7 +109,7 @@ where
 
 #[allow(clippy::cognitive_complexity)] // Ooops...
 fn spawn_off_broker_sink(
-    mut sink: broker::BrokerTcpSink,
+    mut sink: Option<broker::BrokerTcpSink>,
     addr: String,
     mut rx: mpsc::Receiver<Exchange>,
     span: Span,
@@ -113,19 +119,21 @@ fn spawn_off_broker_sink(
         async move {
             event!(Level::DEBUG, "handling broker requests");
             loop {
-                let result = sink.send_all(&mut rx).await;
-                event!(Level::DEBUG, ?result, "broker requests result");
-                // either all tx are dropped (and rx returned None) => result Ok
-                // or sink is broken => result Err
-                if result.is_ok() {
-                    return;
+                if let Some(mut sink) = sink {
+                    let result = sink.send_all(&mut rx).await;
+                    event!(Level::DEBUG, ?result, "broker requests result");
+                    // either all tx are dropped (and rx returned None) => result Ok
+                    // or sink is broken => result Err
+                    if result.is_ok() {
+                        return;
+                    }
                 }
                 loop {
                     // reconnect
                     match broker::connect(&addr).await {
                         Ok((client, responses)) => {
                             event!(Level::DEBUG, "Reconnected");
-                            sink = client;
+                            sink = Some(client);
                             spawn_off_broker_responses(responses, span_inner.clone());
                             break; // reconnect loop
                         }
@@ -177,7 +185,7 @@ impl Cluster {
                     event!(Level::DEBUG, ?addr, "Connected");
                     spawn_off_broker_responses(responses, connection_span.clone());
                     let (tx, rx) = mpsc::channel::<exchange::Exchange>(0);
-                    spawn_off_broker_sink(sink, addr.clone(), rx, connection_span.clone());
+                    spawn_off_broker_sink(Some(sink), addr.clone(), rx, connection_span.clone());
                     client.conns_by_host.insert(addr.to_string(), tx.clone());
                     channel = Some(Ok(tx));
                     address = Some(addr.to_string());
@@ -193,8 +201,9 @@ impl Cluster {
         };
 
         let (request, response) = exchange::make_exchange(
-            &MetadataRequestV0 {
+            &MetadataRequestV7 {
                 topics: Some(Vec::new()),
+                allow_auto_topic_creation: false,
             },
             client.config.client_id.clone(),
         );
@@ -204,7 +213,29 @@ impl Cluster {
         event!(Level::DEBUG, ?response);
         let response = response?;
 
-        for broker in response.brokers.unwrap_or_default() {
+        client.fill_brokers(&response.brokers)?;
+        let address = address.expect("Got a connection but no address");
+        if let Some(broker) = client
+            .brokers
+            .values_mut()
+            .find(|info| info.host == address)
+        {
+            client.conns_by_id.insert(broker.node_id, channel.clone());
+        }
+
+        Ok(client)
+    }
+
+    fn fill_brokers(
+        &mut self,
+        brokers: &Option<Vec<MetadataResponseV7_brokers>>,
+    ) -> Result<(), KafkaError> {
+        let brokers = match brokers {
+            None => return Ok(()),
+            Some(b) => b,
+        };
+        let mut new_brokers = BTreeMap::<i32, BrokerInfo>::new();
+        for broker in brokers {
             let broker_info = BrokerInfo {
                 node_id: broker.node_id,
                 host: format!(
@@ -216,19 +247,16 @@ impl Cluster {
                 ),
                 rack: None, // TODO
             };
-            if Some(&broker_info.host) == address.as_ref() {
-                client.conns_by_id.insert(broker.node_id, channel.clone());
-            }
-            client.brokers.insert(broker.node_id, broker_info);
+            new_brokers.insert(broker.node_id, broker_info);
         }
-
-        Ok(client)
+        std::mem::swap(&mut new_brokers, &mut self.brokers);
+        Ok(())
     }
 
-    /// Fetches metadata for the given topics using a Metadata Request V7.§
+    /// Fetches metadata for the given topics using a Metadata Request V7.
     /// If topics is None, fetches metadata for _all_ topics
     pub async fn metadata_v7(
-        &self,
+        &mut self,
         topics: Option<Vec<String>>,
     ) -> Result<MetadataResponseV7, KafkaError> {
         // select a random (hopefully) established connection
@@ -250,6 +278,78 @@ impl Cluster {
             self.config.client_id.clone(),
         );
         tx.send(request).await.map_err(KafkaError::from)?;
-        response.await
+        let response = response.await?;
+        self.fill_brokers(&response.brokers)?;
+        Ok(response)
+    }
+
+    // TODO: Naming! Conn or BrokerChannel?
+    /// Returns the BrokerChannel for that broker id. If the broker id is unknown, returns a closed channel.
+    pub fn get_conn(&mut self, id: i32) -> BrokerChannel {
+        if let Some(conn) = self.conns_by_id.get(&id) {
+            return conn.clone();
+        }
+
+        // No connection yet -> establish one!
+        let broker_info = match self.brokers.get(&id) {
+            // Unknown broker id -> return closed channel
+            None => return mpsc::channel(0).0,
+            Some(b) => b,
+        };
+
+        let addr = &broker_info.host;
+        let span = span!(Level::INFO, "connection", ?addr);
+        event!(
+            Level::DEBUG,
+            ?addr,
+            "Creating connection for to broker id {} {:?}",
+            id,
+            addr
+        );
+        let (tx, rx) = mpsc::channel::<exchange::Exchange>(0);
+        spawn_off_broker_sink(None, addr.clone(), rx, span.clone());
+        self.conns_by_id.insert(id, tx.clone());
+        self.conns_by_host.insert(addr.clone(), tx.clone());
+
+        tx
+    }
+
+    pub async fn fetch_some(&mut self, topic: String) -> Result<(), KafkaError> {
+        let metadata = dbg!(self.metadata_v7(Some(vec![topic.clone()])).await)?;
+        for topic_metadata in metadata.topic_metadata.unwrap_or_default() {
+            if topic_metadata.error_code != 0 {
+                return Err(KafkaError::Protocol(topic_metadata.error_code));
+            }
+            for partition_metadata in topic_metadata.partition_metadata.unwrap_or_default() {
+                // TODO: Can I ask ISRs as well?
+                let mut broker = self.get_conn(partition_metadata.leader);
+                let (request, response) = exchange::make_exchange(
+                    &franzi_proto::messages::fetch::FetchRequestV6 {
+                        replica_id: -1,
+                        max_wait_time: 30_000, //ms
+                        min_bytes: 1,
+                        max_bytes: 2_000,
+                        isolation_level: 0,
+                        topics: Some(vec![franzi_proto::messages::fetch::FetchRequestV6_topics {
+                            topic: topic.clone().into(),
+                            partitions: Some(vec![
+                                franzi_proto::messages::fetch::FetchRequestV6_partitions {
+                                    partition: partition_metadata.partition,
+                                    fetch_offset: 0,
+                                    log_start_offset: -1,
+                                    partition_max_bytes: 2_000,
+                                },
+                            ]),
+                        }]),
+                    },
+                    self.config.client_id.clone(),
+                );
+                broker.send(request).await.map_err(KafkaError::from)?;
+                let response = dbg!(response.await?);
+                event!(Level::DEBUG, ?response, "Got response");
+                return Ok(())
+            }
+        }
+        Ok(())
     }
 }

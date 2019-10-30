@@ -10,10 +10,10 @@ pub(crate) mod varint;
 
 use bytes::{BufMut, Bytes};
 use futures::channel::{mpsc::SendError, oneshot::Canceled};
+use std::error::Error as _;
 use std::fmt;
 use std::io;
 use std::io::Cursor;
-use std::error::Error as _;
 
 pub use varint::{read_vari64, read_varu64, write_vari64, write_varu64};
 
@@ -29,10 +29,10 @@ impl fmt::Display for DecompressionError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         use DecompressionError::*;
         match self {
-           Gzip(e) => write!(f, "Franzi: Gzip compression error: {}", e),
-           Snappy(e) => write!(f, "Franzi: Snappy compression error: {}", e),
-           Lz4(e) => write!(f, "Franzi: Lz4 compression error: {}", e),
-           Zstd(e) => write!(f, "Franzi: Zstd compression error: {}", e),
+            Gzip(e) => write!(f, "Franzi: Gzip compression error: {}", e),
+            Snappy(e) => write!(f, "Franzi: Snappy compression error: {}", e),
+            Lz4(e) => write!(f, "Franzi: Lz4 compression error: {}", e),
+            Zstd(e) => write!(f, "Franzi: Zstd compression error: {}", e),
         }
     }
 }
@@ -41,10 +41,10 @@ impl std::error::Error for DecompressionError {
     fn description(&self) -> &str {
         use DecompressionError::*;
         match self {
-           Gzip(_) => "Franzi: Gzip compression error",
-           Snappy(_) => "Franzi: Snappy compression error",
-           Lz4(_) => "Franzi: Lz4 compression error",
-           Zstd(_) => "Franzi: Zstd compression error",
+            Gzip(_) => "Franzi: Gzip compression error",
+            Snappy(_) => "Franzi: Snappy compression error",
+            Lz4(_) => "Franzi: Lz4 compression error",
+            Zstd(_) => "Franzi: Zstd compression error",
         }
     }
     fn cause(&self) -> Option<&dyn std::error::Error> {
@@ -73,10 +73,12 @@ impl fmt::Display for FromBytesError {
         use FromBytesError::*;
         match self {
             UnexpectedEOF | UnexpectedNull | VarIntOverflow => write!(f, "{}", self.description()),
-            UnknownMagicByte(byte)  => write!(f, "Franzi: unknown magic (version) byte {}", byte),
-            UnknownCompression(compression)  => write!(f, "Franzi: unknown compression {}", compression),
-            Unimplemented(name)  => write!(f, "Franzi: unimplemented: {:?}", name),
-            Decompression(e)  => write!(f, "Franzi: decompression error: {}", e),
+            UnknownMagicByte(byte) => write!(f, "Franzi: unknown magic (version) byte {}", byte),
+            UnknownCompression(compression) => {
+                write!(f, "Franzi: unknown compression {}", compression)
+            }
+            Unimplemented(name) => write!(f, "Franzi: unimplemented: {:?}", name),
+            Decompression(e) => write!(f, "Franzi: decompression error: {}", e),
         }
     }
 }
@@ -92,7 +94,7 @@ impl std::error::Error for FromBytesError {
             VarIntOverflow => "Franzi: var int overflow (too long)",
             Unimplemented(_) => "Franzi: unimplemented",
             Decompression(_) => "Franzi: decompression error",
-            }
+        }
     }
     fn cause(&self) -> Option<&dyn std::error::Error> {
         // TODO: Put wrapped errors in here?
