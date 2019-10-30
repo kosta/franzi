@@ -347,6 +347,7 @@ impl Cluster {
                 broker.send(request).await.map_err(KafkaError::from)?;
                 let response = dbg!(response.await?);
                 event!(Level::DEBUG, ?response, "Got response");
+                // TODO: Remove me!
                 return Ok(())
             }
         }
