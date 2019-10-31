@@ -346,6 +346,7 @@ pub const UNSUPPORTED_COMPRESSION_TYPE: KafkaErrorCode = KafkaErrorCode {
     description: "The requesting client does not support the compression type of given partition.",
 };
 
+#[allow(dead_code)] // TODO: Use me
 enum KafkaError {
     UNKNOWN_SERVER_ERROR = -1,
     NONE = 0,

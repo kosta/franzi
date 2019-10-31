@@ -12,7 +12,7 @@ use crate::{varint, FromBytesError, FromKafkaBytes, ToKafkaBytes};
 impl FromKafkaBytes for bool {
     fn read(bytes: &mut Cursor<Bytes>) -> Result<Self, FromBytesError> {
         if bytes.remaining() < size_of::<Self>() {
-            return Err(FromBytesError);
+            return Err(FromBytesError::UnexpectedEOF);
         }
         Ok(bytes.get_u8() != 0)
     }
@@ -33,7 +33,7 @@ impl ToKafkaBytes for bool {
 impl FromKafkaBytes for i8 {
     fn read(bytes: &mut Cursor<Bytes>) -> Result<Self, FromBytesError> {
         if bytes.remaining() < size_of::<Self>() {
-            return Err(FromBytesError);
+            return Err(FromBytesError::UnexpectedEOF);
         }
         Ok(bytes.get_i8())
     }
@@ -54,7 +54,7 @@ impl ToKafkaBytes for i8 {
 impl FromKafkaBytes for i16 {
     fn read(bytes: &mut Cursor<Bytes>) -> Result<Self, FromBytesError> {
         if bytes.remaining() < size_of::<Self>() {
-            return Err(FromBytesError);
+            return Err(FromBytesError::UnexpectedEOF);
         }
         Ok(bytes.get_i16_be())
     }
@@ -75,7 +75,7 @@ impl ToKafkaBytes for i16 {
 impl FromKafkaBytes for i32 {
     fn read(bytes: &mut Cursor<Bytes>) -> Result<Self, FromBytesError> {
         if bytes.remaining() < size_of::<Self>() {
-            return Err(FromBytesError);
+            return Err(FromBytesError::UnexpectedEOF);
         }
         Ok(bytes.get_i32_be())
     }
@@ -95,7 +95,7 @@ impl ToKafkaBytes for i32 {
 impl FromKafkaBytes for i64 {
     fn read(bytes: &mut Cursor<Bytes>) -> Result<Self, FromBytesError> {
         if bytes.remaining() < size_of::<Self>() {
-            return Err(FromBytesError);
+            return Err(FromBytesError::UnexpectedEOF);
         }
         Ok(bytes.get_i64_be())
     }
@@ -116,7 +116,7 @@ impl ToKafkaBytes for i64 {
 impl FromKafkaBytes for u32 {
     fn read(bytes: &mut Cursor<Bytes>) -> Result<Self, FromBytesError> {
         if bytes.remaining() < size_of::<Self>() {
-            return Err(FromBytesError);
+            return Err(FromBytesError::UnexpectedEOF);
         }
         Ok(bytes.get_u32_be())
     }
@@ -135,7 +135,7 @@ impl ToKafkaBytes for u32 {
 /// VARINT	Represents an integer between -2^31 and 2^31-1 inclusive. Encoding follows the variable-length zig-zag encoding from Google Protocol Buffers.
 
 #[allow(non_camel_case_types)]
-#[derive(Debug)]
+#[derive(Debug, Eq, PartialEq)]
 pub struct vi32(pub i32);
 
 impl FromKafkaBytes for vi32 {
@@ -150,7 +150,7 @@ impl ToKafkaBytes for vi32 {
     }
 
     fn write(&self, bytes: &mut dyn BufMut) {
-        varint::write_varint(bytes, self.0 as u64)
+        varint::write_vari64(bytes, self.0 as i64)
     }
 }
 
@@ -169,12 +169,12 @@ impl From<vi32> for i32 {
 /// VARLONG	Represents an integer between -2^63 and 2^63-1 inclusive. Encoding follows the variable-length zig-zag encoding from Google Protocol Buffers.
 
 #[allow(non_camel_case_types)]
-#[derive(Debug)]
+#[derive(Debug, Default, Eq, PartialEq)]
 pub struct vi64(pub i64);
 
 impl FromKafkaBytes for vi64 {
     fn read(bytes: &mut Cursor<Bytes>) -> Result<Self, FromBytesError> {
-        Ok(vi64(varint::read_varint64(bytes)? as i64))
+        Ok(vi64(varint::read_vari64(bytes)? as i64))
     }
 }
 
@@ -184,7 +184,7 @@ impl ToKafkaBytes for vi64 {
     }
 
     fn write(&self, bytes: &mut dyn BufMut) {
-        varint::write_varint(bytes, self.0 as u64)
+        varint::write_vari64(bytes, self.0 as i64)
     }
 }
 
@@ -228,7 +228,8 @@ impl From<String> for KafkaString {
 
 impl FromKafkaBytes for KafkaString {
     fn read(bytes: &mut Cursor<Bytes>) -> Result<Self, FromBytesError> {
-        <Option<KafkaString> as FromKafkaBytes>::read(bytes).and_then(|s| s.ok_or(FromBytesError))
+        <Option<KafkaString> as FromKafkaBytes>::read(bytes)
+            .and_then(|s| s.ok_or(FromBytesError::UnexpectedNull))
     }
 }
 
@@ -254,7 +255,7 @@ impl FromKafkaBytes for Option<KafkaString> {
         }
         let len = len as usize;
         if bytes.remaining() < len {
-            return Err(FromBytesError);
+            return Err(FromBytesError::UnexpectedEOF);
         }
         let pos = bytes.position() as usize;
         let s = KafkaString(bytes.get_ref().slice(pos, pos + len));
@@ -283,7 +284,8 @@ impl ToKafkaBytes for Option<KafkaString> {
 
 impl FromKafkaBytes for Bytes {
     fn read(bytes: &mut Cursor<Bytes>) -> Result<Self, FromBytesError> {
-        <Option<Bytes> as FromKafkaBytes>::read(bytes).and_then(|s| s.ok_or(FromBytesError))
+        <Option<Bytes> as FromKafkaBytes>::read(bytes)
+            .and_then(|s| s.ok_or(FromBytesError::UnexpectedNull))
     }
 }
 
@@ -300,23 +302,38 @@ impl ToKafkaBytes for Bytes {
 }
 
 /// Bytes prefixed by a varint lenght. Used in `Record` etc.
-#[derive(Debug)]
+#[derive(Debug, Default, Eq, PartialEq)]
 pub struct VarintBytes(pub Bytes);
 
 impl FromKafkaBytes for VarintBytes {
     fn read(bytes: &mut Cursor<Bytes>) -> Result<Self, FromBytesError> {
-        let len: i64 = vi64::read(bytes)?.into();
+        let len: i64 = varint::read_vari64(bytes)?.into();
         if len <= 0 {
             return Ok(VarintBytes(Bytes::new()));
         }
         let len = len as usize;
         if bytes.remaining() < len {
-            return Err(FromBytesError);
+            return Err(FromBytesError::UnexpectedEOF);
         }
         let pos = bytes.position() as usize;
         let s = bytes.get_ref().slice(pos, pos + len);
         bytes.advance(len);
         Ok(VarintBytes(s))
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    pub fn varint_from_bytes() {
+        const INPUT: &[u8] = &[4, 11, 12];
+        const EXPECTED: &[u8] = &[11, 12];
+        assert_eq!(
+            VarintBytes::from(Bytes::from(EXPECTED)),
+            VarintBytes::read(&mut Cursor::new(INPUT.into())).unwrap(),
+        );
     }
 }
 
@@ -328,8 +345,14 @@ impl ToKafkaBytes for VarintBytes {
     }
 
     fn write(&self, bytes: &mut dyn BufMut) {
-        varint::write_varint(bytes, self.0.len() as u64);
+        varint::write_vari64(bytes, self.0.len() as i64);
         bytes.put_slice(self.0.as_ref());
+    }
+}
+
+impl From<Bytes> for VarintBytes {
+    fn from(bytes: Bytes) -> Self {
+        VarintBytes(bytes)
     }
 }
 
@@ -343,7 +366,7 @@ impl FromKafkaBytes for Option<Bytes> {
         }
         let len = len as usize;
         if bytes.remaining() < len {
-            return Err(FromBytesError);
+            return Err(FromBytesError::UnexpectedEOF);
         }
         let pos = bytes.position() as usize;
         let s = bytes.get_ref().slice(pos, pos + len);
@@ -400,10 +423,30 @@ impl<T: ToKafkaBytes> ToKafkaBytes for Option<Vec<T>> {
         // TODO: Overflow check?
         match self {
             None => bytes.put_i32_be(-1),
-            Some(vec) => {
-                bytes.put_i32_be(vec.len() as i32);
-                vec.iter().for_each(|i| i.write(bytes));
-            }
+            Some(vec) => vec.write(bytes),
         }
+    }
+}
+
+// This is not 100% to spec, but there are some instances in the protocol where the array
+// is never null, so I guess it should be ok to get rid of an "unreachable" Option
+
+impl<T: FromKafkaBytes> FromKafkaBytes for Vec<T> {
+    fn read(bytes: &mut Cursor<Bytes>) -> Result<Self, FromBytesError> {
+        match <Option<Self>>::read(bytes) {
+            Ok(opt) => opt.ok_or(FromBytesError::UnexpectedNull),
+            Err(e) => Err(e),
+        }
+    }
+}
+
+impl<T: ToKafkaBytes> ToKafkaBytes for Vec<T> {
+    fn len_to_write(&self) -> usize {
+        size_of::<i32>() + self.iter().map(ToKafkaBytes::len_to_write).sum::<usize>()
+    }
+
+    fn write(&self, bytes: &mut dyn BufMut) {
+        bytes.put_i32_be(self.len() as i32);
+        self.iter().for_each(|i| i.write(bytes));
     }
 }

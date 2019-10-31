@@ -23,11 +23,19 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     )
     .expect("tracing::subscriber::set_global_default");
 
-    let cluster = Cluster::connect(vec!["localhost:9092".into()]).await?;
+    let topic_name = match std::env::args().skip(1).next() {
+        None => panic!("Expected one command line argument: topic to fetch"),
+        Some(topic_name) => topic_name,
+    };
+
+    let mut cluster = Cluster::connect(vec!["localhost:9092".into()]).await?;
     info!("cluster: {:?}", cluster);
 
-    loop {
-        info!("got metadata: {:?}", cluster.metadata_v7(None).await);
-        sleep(Duration::from_secs(10)).await;
-    }
+    // loop {
+    //     info!("got metadata: {:?}", cluster.metadata_v7(None).await);
+    //     sleep(Duration::from_secs(10)).await;
+    // }
+
+    cluster.fetch_some(topic_name.into()).await?;
+    Ok(())
 }
