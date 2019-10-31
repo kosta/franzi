@@ -315,7 +315,7 @@ impl Cluster {
     }
 
     pub async fn fetch_some(&mut self, topic: String) -> Result<(), KafkaError> {
-        let metadata = dbg!(self.metadata_v7(Some(vec![topic.clone()])).await)?;
+        let metadata = self.metadata_v7(Some(vec![topic.clone()])).await?;
         for topic_metadata in metadata.topic_metadata.unwrap_or_default() {
             if topic_metadata.error_code != 0 {
                 return Err(KafkaError::Protocol(topic_metadata.error_code));
@@ -327,8 +327,8 @@ impl Cluster {
                     &franzi_proto::messages::fetch::FetchRequestV6 {
                         replica_id: -1,
                         max_wait_time: 30_000, //ms
-                        min_bytes: 1,
-                        max_bytes: 2_000,
+                        min_bytes: 0,
+                        max_bytes: 10_000,
                         isolation_level: 0,
                         topics: Some(vec![franzi_proto::messages::fetch::FetchRequestV6_topics {
                             topic: topic.clone().into(),
@@ -336,8 +336,8 @@ impl Cluster {
                                 franzi_proto::messages::fetch::FetchRequestV6_partitions {
                                     partition: partition_metadata.partition,
                                     fetch_offset: 0,
-                                    log_start_offset: -1,
-                                    partition_max_bytes: 2_000,
+                                    log_start_offset: 0,
+                                    partition_max_bytes: 10_000,
                                 },
                             ]),
                         }]),
@@ -345,10 +345,8 @@ impl Cluster {
                     self.config.client_id.clone(),
                 );
                 broker.send(request).await.map_err(KafkaError::from)?;
-                let response = dbg!(response.await?);
+                let response = response.await?;
                 event!(Level::DEBUG, ?response, "Got response");
-                // TODO: Remove me!
-                return Ok(())
             }
         }
         Ok(())

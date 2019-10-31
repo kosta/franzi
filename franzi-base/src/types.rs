@@ -423,10 +423,30 @@ impl<T: ToKafkaBytes> ToKafkaBytes for Option<Vec<T>> {
         // TODO: Overflow check?
         match self {
             None => bytes.put_i32_be(-1),
-            Some(vec) => {
-                bytes.put_i32_be(vec.len() as i32);
-                vec.iter().for_each(|i| i.write(bytes));
-            }
+            Some(vec) => vec.write(bytes),
         }
+    }
+}
+
+// This is not 100% to spec, but there are some instances in the protocol where the array
+// is never null, so I guess it should be ok to get rid of an "unreachable" Option
+
+impl<T: FromKafkaBytes> FromKafkaBytes for Vec<T> {
+    fn read(bytes: &mut Cursor<Bytes>) -> Result<Self, FromBytesError> {
+        match <Option<Self>>::read(bytes) {
+            Ok(opt) => opt.ok_or(FromBytesError::UnexpectedNull),
+            Err(e) => Err(e),
+        }
+    }
+}
+
+impl<T: ToKafkaBytes> ToKafkaBytes for Vec<T> {
+    fn len_to_write(&self) -> usize {
+        size_of::<i32>() + self.iter().map(ToKafkaBytes::len_to_write).sum::<usize>()
+    }
+
+    fn write(&self, bytes: &mut dyn BufMut) {
+        bytes.put_i32_be(self.len() as i32);
+        self.iter().for_each(|i| i.write(bytes));
     }
 }

@@ -12,6 +12,7 @@ futures-preview = "0.3.0-alpha.19"
 bytes = "0.4.11"
 byteorder = "1.2.7"
 lazy_static = "1.4.0"
+tracing = "0.1.9"
 
 # For Compression
 flate2 = "1.0.12"
