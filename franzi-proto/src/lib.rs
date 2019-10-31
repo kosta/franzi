@@ -11,6 +11,8 @@ pub mod errors;
 pub mod exchange;
 pub mod header;
 pub mod messages;
+pub mod messageset_v0;
+pub mod messageset_v1;
 pub mod record;
 
 #[cfg(test)]
