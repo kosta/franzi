@@ -86,7 +86,7 @@ impl FromKafkaBytes for MessageV0 {
         // let value = FromKafkaBytes::read(&mut decompressed)?;
 
         // Ok(MessageV0 { crc, magic_byte, attributes, key, value })
-        unimplemented!("TODO: MessageV0::read")
+        Err(FromBytesError::Unimplemented("TODO: MessageV0::read"))
     }
 }
 
