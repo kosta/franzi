@@ -1,5 +1,4 @@
-use byteorder::ByteOrder;
-use bytes::{BufMut, Bytes, BytesMut, Buf};
+use bytes::{Bytes, BytesMut, Buf};
 use chashmap::CHashMap;
 use franzi_base::{Error as KafkaError, KafkaRequest};
 use franzi_proto::exchange;
@@ -9,21 +8,22 @@ use std::io;
 use std::pin::Pin;
 use std::sync::{Arc, Weak};
 use std::task::Poll;
-use tokio_util::codec::{Decoder, Encoder, FramedRead, FramedWrite};
+use tokio_util::codec::{FramedRead, FramedWrite};
 use tokio::net::TcpStream;
 use tokio::io::{
     ReadHalf, WriteHalf,
     AsyncRead, AsyncWrite,
 };
 use tokio::net::ToSocketAddrs;
+use tokio_util::codec::length_delimited::LengthDelimitedCodec;
 
 pub type BrokerConnection<Si, St> = (
-    BrokerSink<FramedWrite<WriteHalf<Si>, ConnectionCodec>>,
-    BrokerResponses<FramedRead<ReadHalf<St>, ConnectionCodec>>,
+    BrokerSink<FramedWrite<WriteHalf<Si>, LengthDelimitedCodec>>,
+    BrokerResponses<FramedRead<ReadHalf<St>, LengthDelimitedCodec>>,
 );
 
 pub type BrokerTcpConnection = BrokerConnection<TcpStream, TcpStream>;
-pub type BrokerTcpSink = BrokerSink<FramedWrite<WriteHalf<TcpStream>, ConnectionCodec>>;
+pub type BrokerTcpSink = BrokerSink<FramedWrite<WriteHalf<TcpStream>, LengthDelimitedCodec>>;
 
 pub struct BrokerSink<Si>
 where
@@ -56,8 +56,8 @@ pub fn new_broker_connection<T: AsyncRead + AsyncWrite>(
     (read, write): (ReadHalf<T>, WriteHalf<T>),
 ) -> BrokerConnection<T, T> {
     let correlation_ids = Arc::new(CHashMap::new());
-    let sink = FramedWrite::new(write, ConnectionCodec());
-    let stream = FramedRead::new(read, ConnectionCodec());
+    let sink = FramedWrite::new(write, LengthDelimitedCodec::new());
+    let stream = FramedRead::new(read, LengthDelimitedCodec::new());
     (
         BrokerSink {
             sink,
@@ -117,6 +117,7 @@ where
             )
         })?;
         let correlation_id = this.next_correlation_id();
+        eprintln!("Using next correlation id {}", correlation_id);
         item.set_correlation_id(correlation_id);
         correlation_ids.insert(correlation_id, item.response);
         Pin::new(&mut this.sink).start_send(item.payload.freeze())
@@ -144,6 +145,7 @@ where
 
             // read correlation id (TODO: Use ResponseHeader instead?)
             let correlation_id = buf.get_i32();
+            eprintln!("Got correlation id {}", correlation_id);
 
             // TODO: Turn into error? Log this?
             let response_chan = self
@@ -157,45 +159,11 @@ where
             if self.correlation_ids.len() == 0 && Arc::weak_count(&self.correlation_ids) == 0 {
                 // "sending half" is closed, nothing more to do...
                 // TODO: Is this a too slow and too hacky way to determine this?
+                eprintln!("BrokerResponses: Stopping");
                 break;
             }
         }
 
         Ok(())
-    }
-}
-
-pub struct ConnectionCodec();
-
-impl Encoder for ConnectionCodec {
-    // TODO: Is there a better way than this hack?
-    type Item = Bytes;
-    type Error = io::Error;
-
-    fn encode(&mut self, req: Self::Item, buf: &mut BytesMut) -> Result<(), Self::Error> {
-        buf.reserve(req.len());
-        buf.put(req);
-        Ok(())
-    }
-}
-
-impl Decoder for ConnectionCodec {
-    type Item = BytesMut;
-    type Error = io::Error;
-
-    fn decode(&mut self, buf: &mut BytesMut) -> Result<Option<Self::Item>, Self::Error> {
-        if buf.len() < 4 {
-            return Ok(None);
-        }
-        let n = byteorder::NetworkEndian::read_i32(buf.as_ref()) as usize;
-        if buf.len() < n + 4 {
-            // not long enough (yet)
-            return Ok(None);
-        }
-        buf.advance(4);
-        let this = buf.split_off(n);
-        let ret = buf.clone();
-        *buf = this;
-        Ok(Some(ret))
     }
 }

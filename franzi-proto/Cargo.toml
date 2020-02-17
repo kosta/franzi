@@ -10,7 +10,6 @@ franzi-macros = { path = "../franzi-macros" }
 tokio = "0.2.0"
 futures = "0.3"
 bytes = "0.5"
-byteorder = "1.2.7"
 lazy_static = "1.4.0"
 tracing = "0.1.9"
 
