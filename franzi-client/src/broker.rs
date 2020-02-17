@@ -1,20 +1,21 @@
 use byteorder::ByteOrder;
-use bytes::{BufMut, Bytes, BytesMut};
+use bytes::{BufMut, Bytes, BytesMut, Buf};
 use chashmap::CHashMap;
 use franzi_base::{Error as KafkaError, KafkaRequest};
 use franzi_proto::exchange;
 use futures::channel::oneshot;
-use futures::{task::Context, Poll, Sink, SinkExt, Stream, StreamExt};
+use futures::{task::Context, Sink, SinkExt, Stream, StreamExt};
 use std::io;
 use std::pin::Pin;
 use std::sync::{Arc, Weak};
-use tokio::codec::{Decoder, Encoder, FramedRead, FramedWrite};
-use tokio::net::tcp::TcpStream;
-use tokio_io::{
-    split::{ReadHalf, WriteHalf},
+use std::task::Poll;
+use tokio_util::codec::{Decoder, Encoder, FramedRead, FramedWrite};
+use tokio::net::TcpStream;
+use tokio::io::{
+    ReadHalf, WriteHalf,
     AsyncRead, AsyncWrite,
 };
-use tokio_net::ToSocketAddrs;
+use tokio::net::ToSocketAddrs;
 
 pub type BrokerConnection<Si, St> = (
     BrokerSink<FramedWrite<WriteHalf<Si>, ConnectionCodec>>,
@@ -142,8 +143,7 @@ where
             }?;
 
             // read correlation id (TODO: Use ResponseHeader instead?)
-            let correlation_id = byteorder::NetworkEndian::read_i32(buf.as_ref());
-            buf.advance(4);
+            let correlation_id = buf.get_i32();
 
             // TODO: Turn into error? Log this?
             let response_chan = self

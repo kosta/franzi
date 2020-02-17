@@ -66,6 +66,8 @@ throttle_time_ms	Duration in milliseconds for which the request was throttled du
 
 #[cfg(test)]
 mod tests {
+    #![allow(clippy::unreadable_literal)]
+
     use super::*;
     use crate::tests::write_then_read_eq;
 

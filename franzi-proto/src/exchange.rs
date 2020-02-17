@@ -5,7 +5,6 @@ use franzi_base::{
 };
 use futures::channel::oneshot;
 use std::future::Future;
-use std::io;
 
 /// an encoded Request with a response channel
 pub struct Exchange {
@@ -48,8 +47,7 @@ pub fn make_exchange<Req: KafkaRequest>(
             response: tx,
         },
         async move {
-            let buf = rx.await?;
-            let mut buf = io::Cursor::new(buf);
+            let mut buf = rx.await?;
             Req::Response::read(&mut buf).map_err(|e| e.into())
         },
     )

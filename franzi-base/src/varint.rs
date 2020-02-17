@@ -4,14 +4,13 @@
 
 #![allow(ellipsis_inclusive_range_patterns)]
 
-use std::io::Cursor;
 use std::mem::size_of;
 
-use bytes::{Buf, BufMut, Bytes};
+use bytes::{Buf, BufMut};
 
 use crate::FromBytesError;
 
-fn read_u8(bytes: &mut Cursor<Bytes>) -> Result<u8, FromBytesError> {
+fn read_u8<B: Buf>(bytes: &mut B) -> Result<u8, FromBytesError> {
     if bytes.remaining() < size_of::<u8>() {
         return Err(FromBytesError::UnexpectedEOF);
     }
@@ -20,7 +19,7 @@ fn read_u8(bytes: &mut Cursor<Bytes>) -> Result<u8, FromBytesError> {
 
 /// Reads the next varint encoded u64
 #[inline(always)]
-pub fn read_varint32(bytes: &mut Cursor<Bytes>) -> Result<u32, FromBytesError> {
+pub fn read_varint32<B: Buf>(bytes: &mut B) -> Result<u32, FromBytesError> {
     let mut b = read_u8(bytes)?;
     if b & 0x80 == 0 {
         return Ok(u32::from(b));
@@ -64,7 +63,7 @@ pub fn read_varint32(bytes: &mut Cursor<Bytes>) -> Result<u32, FromBytesError> {
 
 /// Reads the next varint encoded u64
 #[inline(always)]
-pub fn read_varu64(bytes: &mut Cursor<Bytes>) -> Result<u64, FromBytesError> {
+pub fn read_varu64<B: Buf>(bytes: &mut B) -> Result<u64, FromBytesError> {
     // part0
     let mut b = read_u8(bytes)?;
     if b & 0x80 == 0 {
@@ -132,7 +131,7 @@ pub fn read_varu64(bytes: &mut Cursor<Bytes>) -> Result<u64, FromBytesError> {
     Err(FromBytesError::VarIntOverflow)
 }
 
-pub fn read_vari64(bytes: &mut Cursor<Bytes>) -> Result<i64, FromBytesError> {
+pub fn read_vari64<B: Buf>(bytes: &mut B) -> Result<i64, FromBytesError> {
     let u = read_varu64(bytes)?;
     let x = (u as i64) >> 1;
     let negative = u & 1;
@@ -178,8 +177,7 @@ pub fn write_vari64(bytes: &mut dyn BufMut, v: i64) {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-    use bytes::BytesMut;
+    use bytes::{Bytes, BytesMut};
     use quickcheck::quickcheck;
 
     const UNSIGNED: &[(u64, &[u8])] = &[
@@ -211,7 +209,7 @@ mod tests {
         for test in SIGNED {
             assert_eq!(
                 test.0,
-                super::read_vari64(&mut Cursor::new(test.1.into())).unwrap(),
+                super::read_vari64(&mut Bytes::from(test.1)).unwrap(),
                 "{:?}",
                 test
             );
@@ -232,7 +230,7 @@ mod tests {
         for test in UNSIGNED {
             assert_eq!(
                 test.0,
-                super::read_varu64(&mut Cursor::new(test.1.into())).unwrap(),
+                super::read_varu64(&mut Bytes::from(test.1)).unwrap(),
                 "{:?}",
                 test
             );
@@ -252,7 +250,7 @@ mod tests {
         fn varint_back_and_forth_i64(x: i64) -> bool {
             let mut buf = BytesMut::new();
             super::write_vari64(&mut buf, x);
-            let y = super::read_vari64(&mut Cursor::new(buf.freeze())).unwrap();
+            let y = super::read_vari64(&mut buf.freeze()).unwrap();
             x == y
         }
     }

@@ -15,4 +15,4 @@ soup = "0.3.0"
 
 [dev-dependencies]
 franzi-base = { path = "../franzi-base" }
-bytes = "0.4.11"
+bytes = "0.5"

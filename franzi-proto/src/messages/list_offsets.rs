@@ -206,6 +206,8 @@ leader_epoch	The leader epoch"
 
 #[cfg(test)]
 mod tests {
+    #![allow(clippy::unreadable_literal)]
+
     use super::*;
     use crate::tests::write_then_read_eq;
     use ::franzi_base::types::KafkaString;
