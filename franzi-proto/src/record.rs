@@ -1,4 +1,4 @@
-use bytes::{BufMut, Bytes, Buf};
+use bytes::{Buf, BufMut, Bytes};
 use franzi_base::{
     read_vari64,
     types::{vi64, VarintBytes},
@@ -176,11 +176,7 @@ impl TryFrom<i16> for Compression {
 }
 
 impl Compression {
-    pub fn decompress(
-        self,
-        bytes: &mut Bytes,
-        batch_length: i32,
-    ) -> Result<Bytes, FromBytesError> {
+    pub fn decompress(self, bytes: &mut Bytes, batch_length: i32) -> Result<Bytes, FromBytesError> {
         use franzi_base::DecompressionError;
         use std::io::Read;
         use Compression::*;
@@ -200,12 +196,10 @@ impl Compression {
                     .map_err(|e| FromBytesError::Decompression(DecompressionError::Gzip(e)))?;
                 Ok(decompressed.into())
             }
-            Snappy => {
-                snap::Decoder::new()
-                    .decompress_vec(&compressed)
-                    .map(|vec| vec.into())
-                    .map_err(|e| FromBytesError::Decompression(DecompressionError::Snappy(e)))
-            }
+            Snappy => snap::Decoder::new()
+                .decompress_vec(&compressed)
+                .map(|vec| vec.into())
+                .map_err(|e| FromBytesError::Decompression(DecompressionError::Snappy(e))),
             Lz4 => {
                 let mut decompressed = Vec::new();
                 lz4::Decoder::new(compressed.as_ref())
@@ -213,11 +207,9 @@ impl Compression {
                     .map_err(|e| FromBytesError::Decompression(DecompressionError::Lz4(e)))?;
                 Ok(decompressed.into())
             }
-            Zstd => {
-                zstd::stream::decode_all(compressed.as_ref())
-                    .map(|vec| vec.into())
-                    .map_err(|e| FromBytesError::Decompression(DecompressionError::Zstd(e)))
-            }
+            Zstd => zstd::stream::decode_all(compressed.as_ref())
+                .map(|vec| vec.into())
+                .map_err(|e| FromBytesError::Decompression(DecompressionError::Zstd(e))),
         }
     }
 }

@@ -1,4 +1,4 @@
-use bytes::{Bytes, BytesMut, Buf};
+use bytes::{Buf, Bytes, BytesMut};
 use chashmap::CHashMap;
 use franzi_base::{Error as KafkaError, KafkaRequest};
 use franzi_proto::exchange;
@@ -8,14 +8,11 @@ use std::io;
 use std::pin::Pin;
 use std::sync::{Arc, Weak};
 use std::task::Poll;
-use tokio_util::codec::{FramedRead, FramedWrite};
+use tokio::io::{AsyncRead, AsyncWrite, ReadHalf, WriteHalf};
 use tokio::net::TcpStream;
-use tokio::io::{
-    ReadHalf, WriteHalf,
-    AsyncRead, AsyncWrite,
-};
 use tokio::net::ToSocketAddrs;
 use tokio_util::codec::length_delimited::LengthDelimitedCodec;
+use tokio_util::codec::{FramedRead, FramedWrite};
 
 pub type BrokerConnection<Si, St> = (
     BrokerSink<FramedWrite<WriteHalf<Si>, LengthDelimitedCodec>>,

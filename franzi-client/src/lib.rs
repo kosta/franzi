@@ -103,7 +103,7 @@ where
             let result = responses.run().await;
             event!(Level::DEBUG, ?result, "broker response result");
         }
-            .instrument(span),
+        .instrument(span),
     );
 }
 
@@ -149,7 +149,7 @@ fn spawn_off_broker_sink(
                 }
             }
         }
-            .instrument(span),
+        .instrument(span),
     );
 }
 

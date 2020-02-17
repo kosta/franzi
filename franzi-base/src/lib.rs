@@ -72,9 +72,7 @@ impl fmt::Display for FromBytesError {
         use FromBytesError::*;
         #[allow(deprecated)]
         match self {
-            UnexpectedEOF | UnexpectedNull | VarIntOverflow => {
-                write!(f, "{}", self.description())
-            },
+            UnexpectedEOF | UnexpectedNull | VarIntOverflow => write!(f, "{}", self.description()),
             UnknownMagicByte(byte) => write!(f, "Franzi: unknown magic (version) byte {}", byte),
             UnknownCompression(compression) => {
                 write!(f, "Franzi: unknown compression {}", compression)
