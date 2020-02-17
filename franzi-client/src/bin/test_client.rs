@@ -18,12 +18,19 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     )
     .expect("tracing::subscriber::set_global_default");
 
-    let topic_name = match std::env::args().skip(1).next() {
-        None => panic!("Expected one command line argument: topic to fetch"),
-        Some(topic_name) => topic_name,
-    };
+    let mut args = std::env::args().skip(1);
 
-    let mut cluster = Cluster::connect(vec!["localhost:9092".into()]).await?;
+    let brokers: Vec<_> = args
+        .next()
+        .expect("Expected broker urls as first command line argument")
+        .split(',')
+        .map(String::from)
+        .collect();
+    let topic_name = args
+        .next()
+        .expect("Expected topic to fetch as second command line argument");
+
+    let mut cluster = Cluster::connect(brokers).await?;
     info!("cluster: {:?}", cluster);
 
     // loop {
@@ -31,6 +38,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     //     sleep(Duration::from_secs(10)).await;
     // }
 
-    cluster.fetch_some(topic_name.into()).await?;
+    cluster.fetch_some(topic_name).await?;
     Ok(())
 }
