@@ -114,7 +114,6 @@ where
             )
         })?;
         let correlation_id = this.next_correlation_id();
-        eprintln!("Using next correlation id {}", correlation_id);
         item.set_correlation_id(correlation_id);
         correlation_ids.insert(correlation_id, item.response);
         Pin::new(&mut this.sink).start_send(item.payload.freeze())
@@ -142,7 +141,6 @@ where
 
             // read correlation id (TODO: Use ResponseHeader instead?)
             let correlation_id = buf.get_i32();
-            eprintln!("Got correlation id {}", correlation_id);
 
             // TODO: Turn into error? Log this?
             let response_chan = self
@@ -156,7 +154,6 @@ where
             if self.correlation_ids.len() == 0 && Arc::weak_count(&self.correlation_ids) == 0 {
                 // "sending half" is closed, nothing more to do...
                 // TODO: Is this a too slow and too hacky way to determine this?
-                eprintln!("BrokerResponses: Stopping");
                 break;
             }
         }
