@@ -103,7 +103,7 @@ where
             let result = responses.run().await;
             event!(Level::DEBUG, ?result, "broker response result");
         }
-            .instrument(span),
+        .instrument(span),
     );
 }
 
@@ -111,10 +111,12 @@ where
 fn spawn_off_broker_sink(
     mut sink: Option<broker::BrokerTcpSink>,
     addr: String,
-    mut rx: mpsc::Receiver<Exchange>,
+    rx: mpsc::Receiver<Exchange>,
     span: Span,
 ) {
     let span_inner = span.clone();
+    use futures::StreamExt;
+    let mut rx = rx.map(Result::Ok);
     tokio::spawn(
         async move {
             event!(Level::DEBUG, "handling broker requests");
@@ -141,13 +143,13 @@ fn spawn_off_broker_sink(
                             event!(Level::DEBUG, ?e, "Error reconnecting...");
                             // TODO: Configurable exponential backoff
                             let amount = std::time::Duration::from_secs(30);
-                            tokio::timer::delay(tokio::clock::now() + amount).await
+                            tokio::time::delay_for(amount).await
                         }
                     }
                 }
             }
         }
-            .instrument(span.clone()),
+        .instrument(span),
     );
 }
 
@@ -307,7 +309,7 @@ impl Cluster {
             addr
         );
         let (tx, rx) = mpsc::channel::<exchange::Exchange>(0);
-        spawn_off_broker_sink(None, addr.clone(), rx, span.clone());
+        spawn_off_broker_sink(None, addr.clone(), rx, span);
         self.conns_by_id.insert(id, tx.clone());
         self.conns_by_host.insert(addr.clone(), tx.clone());
 

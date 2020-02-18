@@ -1,10 +1,10 @@
-use bytes::{BufMut, Bytes};
+use bytes::{Buf, BufMut, Bytes};
 use franzi_base::{
     read_vari64,
     types::{vi64, VarintBytes},
 };
 use franzi_base::{FromBytesError, FromKafkaBytes, ToKafkaBytes};
-use std::{convert::TryFrom, io::Cursor};
+use std::convert::TryFrom;
 use tracing::{event, Level};
 
 #[derive(Debug, PartialEq, Eq)]
@@ -21,20 +21,20 @@ impl ToKafkaBytes for Records {
 }
 
 impl FromKafkaBytes for Records {
-    fn read(bytes: &mut Cursor<Bytes>) -> Result<Self, FromBytesError> {
+    fn read(bytes: &mut Bytes) -> Result<Self, FromBytesError> {
         let item_len = i32::read(bytes)?;
         if item_len < 0 {
             return Ok(Records(Vec::new()));
         }
         let item_len = item_len as usize;
         let mut vec = Vec::with_capacity(item_len);
-        let buffer_len = bytes.get_ref().len() as u64;
         for _ in 0..item_len {
-            if bytes.position() >= buffer_len {
+            if bytes.remaining() == 0 {
                 // incomplete records are ok, it seems?
+                let bytes_len = bytes.len();
                 event!(
                     Level::DEBUG,
-                    ?buffer_len,
+                    ?bytes_len,
                     "Records::read: breaking at end of buffer"
                 );
                 break;
@@ -61,12 +61,14 @@ pub enum Record {
     V2(RecordsV2),
 }
 
+const MAGIC_BYTE_POSITION: usize = 16;
+
 impl FromKafkaBytes for Record {
-    fn read(bytes: &mut Cursor<Bytes>) -> Result<Self, FromBytesError> {
-        let magic_byte = *bytes
-            .get_ref()
-            .get(bytes.position() as usize + 16)
-            .ok_or(FromBytesError::UnexpectedEOF)? as i8;
+    fn read(bytes: &mut Bytes) -> Result<Self, FromBytesError> {
+        if bytes.remaining() <= MAGIC_BYTE_POSITION {
+            return Err(FromBytesError::UnexpectedEOF);
+        }
+        let magic_byte = bytes.as_ref()[MAGIC_BYTE_POSITION] as i8;
         match magic_byte {
             // 0 => Ok(Record::V0(MessageSetV0::read(bytes)?)),
             0 => Err(FromBytesError::Unimplemented(
@@ -91,7 +93,7 @@ impl ToKafkaBytes for Record {
     }
 }
 
-/// RECORDS	Represents a sequence of Kafka records as NULLABLE_BYTES.
+/// RECORDS Represents a sequence of Kafka records as NULLABLE_BYTES.
 /// [Kafka Spec](http://kafka.apache.org/documentation/#recordbatch):
 /// ```ignore
 /// baseOffset: int64
@@ -174,62 +176,40 @@ impl TryFrom<i16> for Compression {
 }
 
 impl Compression {
-    pub fn decompress(
-        &self,
-        bytes: &mut Cursor<Bytes>,
-        batch_length: i32,
-    ) -> Result<Bytes, FromBytesError> {
+    pub fn decompress(self, bytes: &mut Bytes, batch_length: i32) -> Result<Bytes, FromBytesError> {
         use franzi_base::DecompressionError;
         use std::io::Read;
         use Compression::*;
-        let pos = bytes.position() as usize;
         const BATCH_HEADER_LENGTH: usize = 49;
-        let end_pos = pos + batch_length as usize - BATCH_HEADER_LENGTH;
-        bytes.set_position(end_pos as u64);
+        let compressed_len = batch_length as usize - BATCH_HEADER_LENGTH;
+        if bytes.remaining() < compressed_len {
+            return Err(FromBytesError::UnexpectedEOF);
+        }
+        let compressed = bytes.split_to(compressed_len);
         match self {
-            None => Ok(bytes.get_ref().slice(pos, end_pos)),
+            None => Ok(compressed),
             Gzip => {
                 use flate2::read::GzDecoder;
-                let slice = bytes
-                    .get_ref()
-                    .get(pos..end_pos)
-                    .ok_or(FromBytesError::UnexpectedEOF)?;
-                let mut gz = GzDecoder::new(slice);
+                let mut gz = GzDecoder::new(compressed.as_ref());
                 let mut decompressed = Vec::new();
                 gz.read_to_end(&mut decompressed)
                     .map_err(|e| FromBytesError::Decompression(DecompressionError::Gzip(e)))?;
                 Ok(decompressed.into())
             }
-            Snappy => {
-                let slice = bytes
-                    .get_ref()
-                    .get(pos..end_pos)
-                    .ok_or(FromBytesError::UnexpectedEOF)?;
-                snap::Decoder::new()
-                    .decompress_vec(slice)
-                    .map(|vec| vec.into())
-                    .map_err(|e| FromBytesError::Decompression(DecompressionError::Snappy(e)))
-            }
+            Snappy => snap::Decoder::new()
+                .decompress_vec(&compressed)
+                .map(|vec| vec.into())
+                .map_err(|e| FromBytesError::Decompression(DecompressionError::Snappy(e))),
             Lz4 => {
-                let slice = bytes
-                    .get_ref()
-                    .get(pos..end_pos)
-                    .ok_or(FromBytesError::UnexpectedEOF)?;
                 let mut decompressed = Vec::new();
-                lz4::Decoder::new(slice)
+                lz4::Decoder::new(compressed.as_ref())
                     .and_then(|mut decoder| decoder.read_to_end(&mut decompressed))
                     .map_err(|e| FromBytesError::Decompression(DecompressionError::Lz4(e)))?;
                 Ok(decompressed.into())
             }
-            Zstd => {
-                let slice = bytes
-                    .get_ref()
-                    .get(pos..end_pos)
-                    .ok_or(FromBytesError::UnexpectedEOF)?;
-                zstd::stream::decode_all(slice)
-                    .map(|vec| vec.into())
-                    .map_err(|e| FromBytesError::Decompression(DecompressionError::Zstd(e)))
-            }
+            Zstd => zstd::stream::decode_all(compressed.as_ref())
+                .map(|vec| vec.into())
+                .map_err(|e| FromBytesError::Decompression(DecompressionError::Zstd(e))),
         }
     }
 }
@@ -241,7 +221,7 @@ pub struct RecordsV2 {
 }
 
 impl FromKafkaBytes for RecordsV2 {
-    fn read(bytes: &mut Cursor<Bytes>) -> Result<Self, FromBytesError> {
+    fn read(bytes: &mut Bytes) -> Result<Self, FromBytesError> {
         let head: RecordsV2Head = FromKafkaBytes::read(bytes)?;
         if head.magic != 2 {
             return Err(FromBytesError::UnknownMagicByte(head.magic));
@@ -250,9 +230,8 @@ impl FromKafkaBytes for RecordsV2 {
         let mut records = Vec::with_capacity(usize::try_from(records_len).unwrap_or_default());
         if records_len > 0 {
             let compression = Compression::try_from(head.attributes)
-                .map_err(|x| FromBytesError::UnknownCompression(x))?;
-            let decompressed_bytes = compression.decompress(bytes, head.batch_length)?;
-            let mut decompressed = Cursor::new(decompressed_bytes);
+                .map_err(FromBytesError::UnknownCompression)?;
+            let mut decompressed = compression.decompress(bytes, head.batch_length)?;
 
             for _ in 0..records_len {
                 records.push(RecordV2::read(&mut decompressed)?);
@@ -262,7 +241,7 @@ impl FromKafkaBytes for RecordsV2 {
     }
 }
 
-/// RECORDS	Represents a sequence of Kafka records as NULLABLE_BYTES.
+/// RECORDS Represents a sequence of Kafka records as NULLABLE_BYTES.
 /// [Kafka Spec](http://kafka.apache.org/documentation/#recordbatch):
 /// ```ignore
 /// length: varint
@@ -289,7 +268,7 @@ pub struct RecordV2 {
 }
 
 impl FromKafkaBytes for RecordV2 {
-    fn read(bytes: &mut Cursor<Bytes>) -> Result<Self, FromBytesError> {
+    fn read(bytes: &mut Bytes) -> Result<Self, FromBytesError> {
         Ok(RecordV2 {
             length: vi64::read(bytes)?,
             attributes: i8::read(bytes)?,
@@ -313,9 +292,9 @@ impl ToKafkaBytes for RecordV2 {
 }
 
 fn read_varint_vec<T: FromKafkaBytes + std::fmt::Debug>(
-    bytes: &mut Cursor<Bytes>,
+    bytes: &mut Bytes,
 ) -> Result<Vec<T>, FromBytesError> {
-    let item_len: i64 = read_vari64(bytes)?.into();
+    let item_len: i64 = read_vari64(bytes)?;
     if item_len < 0 {
         return Ok(Vec::new());
     }
@@ -344,11 +323,12 @@ pub struct RecordV2Header {
 
 #[cfg(test)]
 mod tests {
+    #![allow(clippy::unreadable_literal)]
+
     use super::*;
     use bytes::Bytes;
     use franzi_base::FromKafkaBytes;
     use lazy_static::lazy_static;
-    use std::io::Cursor;
 
     struct Test {
         name: &'static str,
@@ -621,7 +601,7 @@ mod tests {
         for test in &*TESTS {
             assert_eq!(
                 test.expected,
-                Record::read(&mut Cursor::new(test.encoded.into())).unwrap(),
+                Record::read(&mut Bytes::from(test.encoded)).unwrap(),
                 "{}",
                 test.name
             );

@@ -406,7 +406,7 @@ pub fn derive_from_bytes(input: proc_macro::TokenStream) -> proc_macro::TokenStr
     let expanded = quote! {
         // The generated impl.
         impl #impl_generics ::franzi_base::FromKafkaBytes for #name #ty_generics #where_clause {
-            fn read(bytes: &mut ::std::io::Cursor<::bytes::Bytes>) -> Result<Self, ::franzi_base::FromBytesError> {
+            fn read(bytes: &mut ::bytes::Bytes) -> Result<Self, ::franzi_base::FromBytesError> {
                 Ok(#name
                     #imp
                 )

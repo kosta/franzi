@@ -13,7 +13,6 @@ use futures::channel::{mpsc::SendError, oneshot::Canceled};
 use std::error::Error as _;
 use std::fmt;
 use std::io;
-use std::io::Cursor;
 
 pub use varint::{read_vari64, read_varu64, write_vari64, write_varu64};
 
@@ -71,6 +70,7 @@ pub enum FromBytesError {
 impl fmt::Display for FromBytesError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         use FromBytesError::*;
+        #[allow(deprecated)]
         match self {
             UnexpectedEOF | UnexpectedNull | VarIntOverflow => write!(f, "{}", self.description()),
             UnknownMagicByte(byte) => write!(f, "Franzi: unknown magic (version) byte {}", byte),
@@ -113,7 +113,7 @@ impl std::error::Error for FromBytesError {
 pub trait FromKafkaBytes: Sized {
     // Cursor<Bytes> because that allows access to Bytes but also implements Buf
     // Might be fixed in Bytes 0.5,see https://github.com/carllerche/bytes/issues/75
-    fn read(bytes: &mut Cursor<Bytes>) -> Result<Self, FromBytesError>;
+    fn read(bytes: &mut Bytes) -> Result<Self, FromBytesError>;
 }
 
 /// A type that can be serialized to a Kafka Protocol message.
@@ -191,6 +191,7 @@ impl From<std::str::Utf8Error> for Error {
 impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         use Error::*;
+        #[allow(deprecated)]
         match self {
             FromBytes(e) => e.fmt(f),
             Canceled | SendError => write!(f, "{}", self.description()),
@@ -203,6 +204,7 @@ impl fmt::Display for Error {
 
 impl std::error::Error for Error {
     fn description(&self) -> &str {
+        #[allow(deprecated)]
         match self {
             Error::FromBytes(e) => e.description(),
             Error::Canceled => "Franzi: response Canceled (connection closed)",

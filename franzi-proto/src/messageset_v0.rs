@@ -1,6 +1,6 @@
 use bytes::{BufMut, Bytes};
 use franzi_base::{FromBytesError, FromKafkaBytes, ToKafkaBytes};
-use std::{convert::TryFrom, io::Cursor};
+use std::convert::TryFrom;
 
 /// MessageSet (Version: 0) => [offset message_size message]
 ///    offset => INT64
@@ -35,7 +35,7 @@ impl ToKafkaBytes for MessageSetV0 {
 }
 
 impl FromKafkaBytes for MessageSetV0 {
-    fn read(bytes: &mut Cursor<Bytes>) -> Result<Self, FromBytesError> {
+    fn read(bytes: &mut Bytes) -> Result<Self, FromBytesError> {
         let offset: i64 = FromKafkaBytes::read(bytes)?;
         let message_size: i32 = FromKafkaBytes::read(bytes)?;
         let mut messages = Vec::with_capacity(usize::try_from(message_size).unwrap_or_default());
@@ -72,7 +72,7 @@ impl ToKafkaBytes for MessageV0 {
 }
 
 impl FromKafkaBytes for MessageV0 {
-    fn read(_bytes: &mut Cursor<Bytes>) -> Result<Self, FromBytesError> {
+    fn read(_bytes: &mut Bytes) -> Result<Self, FromBytesError> {
         // let crc: i32 = FromKafkaBytes::read(bytes)?;
         // let magic_byte: i8 = FromKafkaBytes::read(bytes)?;
         // let attributes: i8 = FromKafkaBytes::read(bytes)?;

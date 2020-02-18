@@ -20,7 +20,6 @@ mod tests {
     use bytes::BytesMut;
     use franzi_base::{FromKafkaBytes, ToKafkaBytes};
     use std::fmt::Debug;
-    use std::io::Cursor;
 
     pub fn write_then_read_eq<T: FromKafkaBytes + ToKafkaBytes + Eq + Debug>(
         input: T,
@@ -29,7 +28,7 @@ mod tests {
         let mut buf = BytesMut::with_capacity(input.len_to_write());
         input.write(&mut buf);
         assert_eq!(expected, &buf);
-        let parsed: T = FromKafkaBytes::read(&mut Cursor::new(buf.freeze())).expect("parse error");
+        let parsed: T = FromKafkaBytes::read(&mut buf.freeze()).expect("parse error");
         assert_eq!(input, parsed);
     }
 }
