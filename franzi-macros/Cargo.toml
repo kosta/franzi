@@ -8,10 +8,10 @@ edition = "2018"
 proc-macro = true
 
 [dependencies]
-syn = "0.15"
-quote = "0.6.3"
-proc-macro2 = "0.4.25"
-soup = "0.3.0"
+syn = "1"
+quote = "1"
+proc-macro2 = "1"
+# soup = "0.5.0"
 
 [dev-dependencies]
 franzi-base = { path = "../franzi-base" }
