@@ -38,6 +38,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     //     sleep(Duration::from_secs(10)).await;
     // }
 
-    cluster.fetch_some(topic_name).await?;
+    // cluster.fetch_some(topic_name).await?;
+
+    cluster.fetch_offsets("".into(), topic_name).await?;
     Ok(())
 }
