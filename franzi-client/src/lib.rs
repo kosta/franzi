@@ -4,6 +4,9 @@
 //#![warn(clippy::pedantic)]
 //#![warn(clippy::cargo)]
 
+use franzi_proto::messages::offset_fetch::OffsetFetchRequestV5_partitions;
+use franzi_proto::messages::offset_fetch::OffsetFetchRequestV5_topics;
+use franzi_proto::messages::offset_fetch::OffsetFetchRequestV5;
 use bytes::{Bytes, BytesMut};
 use debug_stub_derive::DebugStub;
 use franzi_base::{types::KafkaString, Error as KafkaError};
@@ -323,6 +326,9 @@ impl Cluster {
                 return Err(KafkaError::Protocol(topic_metadata.error_code));
             }
             for partition_metadata in topic_metadata.partition_metadata.unwrap_or_default() {
+                if partition_metadata.partition != 95 {
+                    continue
+                }
                 // TODO: Can I ask ISRs as well?
                 let mut broker = self.get_conn(partition_metadata.leader);
                 let (request, response) = exchange::make_exchange(
@@ -350,6 +356,41 @@ impl Cluster {
                 let response = response.await?;
                 event!(Level::DEBUG, ?response, "Got response");
             }
+        }
+        Ok(())
+    }
+
+    pub async fn fetch_offsets(&mut self, group_id: String, topic: String) -> Result<(), KafkaError> {
+        // TODO: Cache metadata!
+        let metadata = self.metadata_v7(Some(vec![topic.clone()])).await?;
+        let topic_metadata = metadata.topic_metadata.unwrap_or_default();
+        let mut partitions_by_leader: BTreeMap<i32, Vec<i32>> = BTreeMap::new();
+        for topic_metadata in topic_metadata {
+            if topic_metadata.error_code != 0 {
+                return Err(KafkaError::Protocol(topic_metadata.error_code));
+            }
+            for partition_metadata in topic_metadata.partition_metadata.unwrap_or_default() {
+                partitions_by_leader.entry(partition_metadata.leader).or_default().push(partition_metadata.partition);
+            }
+        }
+
+        for (leader, partitions) in partitions_by_leader {
+            let mut broker = self.get_conn(leader);
+            let (request, response) = exchange::make_exchange(
+                &OffsetFetchRequestV5 {
+                    group_id: group_id.clone().into(),
+                    topics: Some(vec![OffsetFetchRequestV5_topics{
+                        topic: topic.clone().into(),
+                        partitions: Some(partitions.into_iter().map(|partition| OffsetFetchRequestV5_partitions{
+                            partition: partition,
+                        }).collect()),
+                    }]),
+                },
+                self.config.client_id.clone(),
+            );
+            broker.send(request).await.map_err(KafkaError::from)?;
+            let response = response.await?;
+            event!(Level::DEBUG, ?response, "Got response");
         }
         Ok(())
     }
