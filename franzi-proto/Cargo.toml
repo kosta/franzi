@@ -10,11 +10,13 @@ franzi-macros = { path = "../franzi-macros" }
 tokio = "0.2.0"
 futures = "0.3"
 bytes = "0.5"
-lazy_static = "1.4.0"
 tracing = "0.1.9"
 
 # For Compression
 flate2 = "1.0.12"
-snap = "0.2.5"
+snap = "1.0.1"
 lz4 = "1.23.1"
 zstd = "0.5.0"
+
+[dev-dependencies]
+lazy_static = "1.4.0"

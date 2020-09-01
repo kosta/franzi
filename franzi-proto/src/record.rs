@@ -196,7 +196,8 @@ impl Compression {
                     .map_err(|e| FromBytesError::Decompression(DecompressionError::Gzip(e)))?;
                 Ok(decompressed.into())
             }
-            Snappy => snap::Decoder::new()
+            // TODO: Should this be FramedEncoder? But is the kafka message framed?
+            Snappy => snap::raw::Decoder::new()
                 .decompress_vec(&compressed)
                 .map(|vec| vec.into())
                 .map_err(|e| FromBytesError::Decompression(DecompressionError::Snappy(e))),
