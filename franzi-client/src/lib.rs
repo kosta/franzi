@@ -4,12 +4,12 @@
 //#![warn(clippy::pedantic)]
 //#![warn(clippy::cargo)]
 
-use franzi_proto::messages::offset_fetch::OffsetFetchRequestV5_partitions;
-use franzi_proto::messages::offset_fetch::OffsetFetchRequestV5_topics;
-use franzi_proto::messages::offset_fetch::OffsetFetchRequestV5;
 use bytes::{Bytes, BytesMut};
 use debug_stub_derive::DebugStub;
 use franzi_base::{types::KafkaString, Error as KafkaError};
+use franzi_proto::messages::offset_fetch::OffsetFetchRequestV5;
+use franzi_proto::messages::offset_fetch::OffsetFetchRequestV5_partitions;
+use franzi_proto::messages::offset_fetch::OffsetFetchRequestV5_topics;
 use franzi_proto::{
     exchange,
     exchange::Exchange,
@@ -327,7 +327,7 @@ impl Cluster {
             }
             for partition_metadata in topic_metadata.partition_metadata.unwrap_or_default() {
                 if partition_metadata.partition != 95 {
-                    continue
+                    continue;
                 }
                 // TODO: Can I ask ISRs as well?
                 let mut broker = self.get_conn(partition_metadata.leader);
@@ -360,7 +360,11 @@ impl Cluster {
         Ok(())
     }
 
-    pub async fn fetch_offsets(&mut self, group_id: String, topic: String) -> Result<(), KafkaError> {
+    pub async fn fetch_offsets(
+        &mut self,
+        group_id: String,
+        topic: String,
+    ) -> Result<(), KafkaError> {
         // TODO: Cache metadata!
         let metadata = self.metadata_v7(Some(vec![topic.clone()])).await?;
         let topic_metadata = metadata.topic_metadata.unwrap_or_default();
@@ -370,7 +374,10 @@ impl Cluster {
                 return Err(KafkaError::Protocol(topic_metadata.error_code));
             }
             for partition_metadata in topic_metadata.partition_metadata.unwrap_or_default() {
-                partitions_by_leader.entry(partition_metadata.leader).or_default().push(partition_metadata.partition);
+                partitions_by_leader
+                    .entry(partition_metadata.leader)
+                    .or_default()
+                    .push(partition_metadata.partition);
             }
         }
 
@@ -379,11 +386,16 @@ impl Cluster {
             let (request, response) = exchange::make_exchange(
                 &OffsetFetchRequestV5 {
                     group_id: group_id.clone().into(),
-                    topics: Some(vec![OffsetFetchRequestV5_topics{
+                    topics: Some(vec![OffsetFetchRequestV5_topics {
                         topic: topic.clone().into(),
-                        partitions: Some(partitions.into_iter().map(|partition| OffsetFetchRequestV5_partitions{
-                            partition: partition,
-                        }).collect()),
+                        partitions: Some(
+                            partitions
+                                .into_iter()
+                                .map(|partition| OffsetFetchRequestV5_partitions {
+                                    partition: partition,
+                                })
+                                .collect(),
+                        ),
                     }]),
                 },
                 self.config.client_id.clone(),
