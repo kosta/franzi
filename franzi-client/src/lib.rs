@@ -18,7 +18,7 @@ use franzi_proto::{
 use futures::{channel::mpsc, SinkExt, Stream};
 use rand::seq::{IteratorRandom, SliceRandom};
 use std::{collections::BTreeMap, convert::From, fmt, fmt::Debug, io};
-use tracing::{event, span, Level, Span};
+use tracing::{debug, event, span, Level, Span};
 use tracing_futures::Instrument;
 
 pub mod broker;
@@ -137,7 +137,7 @@ fn spawn_off_broker_sink(
                     // reconnect
                     match broker::connect(&addr).await {
                         Ok((client, responses)) => {
-                            event!(Level::DEBUG, "Reconnected");
+                            event!(Level::DEBUG, "(Re)connected");
                             sink = Some(client);
                             spawn_off_broker_responses(responses, span_inner.clone());
                             break; // reconnect loop
@@ -245,12 +245,14 @@ impl Cluster {
                 node_id: broker.node_id,
                 host: format!(
                     "{}:{}",
-                    std::str::from_utf8(broker.host.0.as_ref())
-                        .map_err(KafkaError::from)?
-                        .to_string(),
+                    std::str::from_utf8(broker.host.0.as_ref())?.to_string(),
                     broker.port
                 ),
-                rack: None, // TODO
+                rack: broker
+                    .rack
+                    .as_ref()
+                    .map(|rack| std::str::from_utf8(&rack.0).map(String::from))
+                    .transpose()?,
             };
             new_brokers.insert(broker.node_id, broker_info);
         }
@@ -284,6 +286,7 @@ impl Cluster {
         );
         tx.send(request).await.map_err(KafkaError::from)?;
         let response = response.await?;
+        debug!("Got metadata_v7 response: {:?}", response);
         self.fill_brokers(&response.brokers)?;
         Ok(response)
     }
@@ -381,25 +384,30 @@ impl Cluster {
             }
         }
 
+        debug!(
+            "fetch_offsets: partitions_by_leader: {:?}",
+            partitions_by_leader
+        );
+
         for (leader, partitions) in partitions_by_leader {
             let mut broker = self.get_conn(leader);
-            let (request, response) = exchange::make_exchange(
-                &OffsetFetchRequestV5 {
-                    group_id: group_id.clone().into(),
-                    topics: Some(vec![OffsetFetchRequestV5_topics {
-                        topic: topic.clone().into(),
-                        partitions: Some(
-                            partitions
-                                .into_iter()
-                                .map(|partition| OffsetFetchRequestV5_partitions {
-                                    partition: partition,
-                                })
-                                .collect(),
-                        ),
-                    }]),
-                },
-                self.config.client_id.clone(),
-            );
+            let request = OffsetFetchRequestV5 {
+                group_id: group_id.clone().into(),
+                topics: Some(vec![OffsetFetchRequestV5_topics {
+                    topic: topic.clone().into(),
+                    partitions: Some(
+                        partitions
+                            .into_iter()
+                            .map(|partition| OffsetFetchRequestV5_partitions {
+                                partition: partition,
+                            })
+                            .collect(),
+                    ),
+                }]),
+            };
+            debug!("Sending to broker {}: {:?}", leader, request);
+            let (request, response) =
+                exchange::make_exchange(&request, self.config.client_id.clone());
             broker.send(request).await.map_err(KafkaError::from)?;
             let response = response.await?;
             event!(Level::DEBUG, ?response, "Got response");
