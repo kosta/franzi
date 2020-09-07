@@ -13,11 +13,14 @@ use franzi_proto::messages::offset_fetch::OffsetFetchRequestV5_topics;
 use franzi_proto::{
     exchange,
     exchange::Exchange,
-    messages::metadata::{MetadataRequestV7, MetadataResponseV7, MetadataResponseV7_brokers},
+    messages::{
+        find_coordinator::FindCoordinatorRequestV2,
+        metadata::{MetadataRequestV7, MetadataResponseV7, MetadataResponseV7_brokers},
+    }
 };
 use futures::{channel::mpsc, SinkExt, Stream};
 use rand::seq::{IteratorRandom, SliceRandom};
-use std::{collections::BTreeMap, convert::From, fmt, fmt::Debug, io};
+use std::{collections::BTreeMap, convert::From, fmt, fmt::Debug, io, sync::Arc};
 use tracing::{debug, event, span, Level, Span};
 use tracing_futures::Instrument;
 
@@ -109,6 +112,8 @@ where
         .instrument(span),
     );
 }
+
+pub struct ConsumerGroupMembership(Arc<()>);
 
 #[allow(clippy::cognitive_complexity)] // Ooops...
 fn spawn_off_broker_sink(
@@ -260,23 +265,27 @@ impl Cluster {
         Ok(())
     }
 
+    // select a random (hopefully) established connection
+    // use conns_by_host because conns_by_id does not need to be filled
+    // TODO: if that connection is down, we probably need to timeout and try other connections if possible
+    // Idea: we can timeout on the `tx.send(request)` and select another (connected) broker,
+    // so we can choose a smaller timeout than if we timeout on `response.await`
+    fn random_broker(&self) -> (String, BrokerChannel) {
+        let (host, conn) = self
+            .conns_by_host
+            .iter()
+            .choose(&mut rand::thread_rng())
+            .expect("No connections available");
+        (host.clone(), conn.clone())
+    }
+
     /// Fetches metadata for the given topics using a Metadata Request V7.
     /// If topics is None, fetches metadata for _all_ topics
     pub async fn metadata_v7(
         &mut self,
         topics: Option<Vec<String>>,
     ) -> Result<MetadataResponseV7, KafkaError> {
-        // select a random (hopefully) established connection
-        // use conns_by_host because conns_by_id does not need to be filled
-        // TODO: if that connection is down, we probably need to timeout and try other connections if possible
-        // Idea: we can timeout on the `tx.send(request)` and select another (connected) broker,
-        // so we can choose a smaller timeout than if we timeout on `response.await`
-        let mut tx = self
-            .conns_by_host
-            .values()
-            .choose(&mut rand::thread_rng())
-            .expect("No connections available")
-            .clone();
+        let (_, mut tx) = self.random_broker();
         let (request, response) = exchange::make_exchange(
             &MetadataRequestV7 {
                 topics: topics.map(|xs| xs.into_iter().map(KafkaString::from).collect()),
@@ -363,55 +372,102 @@ impl Cluster {
         Ok(())
     }
 
+// sarama consumes like this:
+// - FindCoordinatorRequest for consumer group to any broker;
+//   -> Response contains broker; remember Broker and Coordinator
+// - JoinGroupRequest with groupID, memberID (initially empty), timeout (in seconds?), ProtocolType: "consumer"
+//   meta contains topics, UserData (from config, optional), strategy ("range" or "roundrobin")
+//   -> response contains leader_id, member_id (if identical: we are the leader), members(?)
+//      - if leader: get members as type ConsumerGroupMemberMetadata struct { Version  int16, Topics   []string, UserData []byte}
+//        then balance according to strategy
+// - SyncGroupRequest
+//   - groupID, memberID, generationID
+//   - if leader, include plan with type ConsumerGroupMemberAssignment struct { Version  int16, Topics   map[string][]int32, UserData []byte }
+//     -> response contains ConsumerGroupMemberAssignment (for this member)
+// TODO: When a non-leader joins, how does the leader balance it?
+// - for each claim:
+//   - start heartbeat loop: (every heartbeat interval)
+//     send HeartbeatRequest with groupID, memberID, generation to coordinator
+//   - send OffsetFetchRequest _for joined group_, now we have a starting offset, watermarks, ... (yay!)
+//   - start FetchRequests
+
+    async fn join_consumer_group(&mut self, group_id: String, topics: Vec<String>) -> Result<ConsumerGroupMembership, KafkaError> {
+        let request = FindCoordinatorRequestV2{
+            coordinator_key: group_id.into(),
+            coordinator_type: 0, // (0 = group, 1 = transaction)
+        };
+        let (broker_host, mut broker_connection) = self.random_broker();
+        event!(Level::DEBUG, ?broker_host, "Sending to broker {:?}", request);
+        let (request, response) =
+            exchange::make_exchange(&request, self.config.client_id.clone());
+        broker_connection.send(request).await.map_err(KafkaError::from)?;
+        let response = response.await?;
+        event!(Level::DEBUG, ?broker_host, "Got response from broker {:?}", response);
+
+        if response.error_code != 0 {
+            return Err(KafkaError::Protocol(response.error_code));
+        }
+
+        // TODO: update broker cache in case we don't know this broker?
+
+
+        unimplemented!()
+    }
+
     pub async fn fetch_offsets(
         &mut self,
         group_id: String,
         topic: String,
     ) -> Result<(), KafkaError> {
-        // TODO: Cache metadata!
-        let metadata = self.metadata_v7(Some(vec![topic.clone()])).await?;
-        let topic_metadata = metadata.topic_metadata.unwrap_or_default();
-        let mut partitions_by_leader: BTreeMap<i32, Vec<i32>> = BTreeMap::new();
-        for topic_metadata in topic_metadata {
-            if topic_metadata.error_code != 0 {
-                return Err(KafkaError::Protocol(topic_metadata.error_code));
-            }
-            for partition_metadata in topic_metadata.partition_metadata.unwrap_or_default() {
-                partitions_by_leader
-                    .entry(partition_metadata.leader)
-                    .or_default()
-                    .push(partition_metadata.partition);
-            }
-        }
+        self.join_consumer_group(group_id, vec![topic]).await?;
 
-        debug!(
-            "fetch_offsets: partitions_by_leader: {:?}",
-            partitions_by_leader
-        );
+        // // TODO: Cache metadata!
+        // let metadata = self.metadata_v7(Some(vec![topic.clone()])).await?;
+        // let topic_metadata = metadata.topic_metadata.unwrap_or_default();
 
-        for (leader, partitions) in partitions_by_leader {
-            let mut broker = self.get_conn(leader);
-            let request = OffsetFetchRequestV5 {
-                group_id: group_id.clone().into(),
-                topics: Some(vec![OffsetFetchRequestV5_topics {
-                    topic: topic.clone().into(),
-                    partitions: Some(
-                        partitions
-                            .into_iter()
-                            .map(|partition| OffsetFetchRequestV5_partitions {
-                                partition: partition,
-                            })
-                            .collect(),
-                    ),
-                }]),
-            };
-            debug!("Sending to broker {}: {:?}", leader, request);
-            let (request, response) =
-                exchange::make_exchange(&request, self.config.client_id.clone());
-            broker.send(request).await.map_err(KafkaError::from)?;
-            let response = response.await?;
-            event!(Level::DEBUG, ?response, "Got response");
-        }
+        // let mut all_partitions = Vec::new();
+        // let mut partitions_by_leader: BTreeMap<i32, Vec<i32>> = BTreeMap::new();
+        // for topic_metadata in topic_metadata {
+        //     if topic_metadata.error_code != 0 {
+        //         return Err(KafkaError::Protocol(topic_metadata.error_code));
+        //     }
+        //     for partition_metadata in topic_metadata.partition_metadata.unwrap_or_default() {
+        //         partitions_by_leader
+        //             .entry(partition_metadata.leader)
+        //             .or_default()
+        //             .push(partition_metadata.partition);
+        //         all_partitions.push(partition_metadata.partition);
+        //     }
+        // }
+
+        // debug!(
+        //     "fetch_offsets: partitions_by_leader: {:?}",
+        //     partitions_by_leader
+        // );
+
+        // for (leader, _partitions) in partitions_by_leader {
+        //     let mut broker = self.get_conn(leader);
+        //     let request = OffsetFetchRequestV5 {
+        //         group_id: group_id.clone().into(),
+        //         topics: Some(vec![OffsetFetchRequestV5_topics {
+        //             topic: topic.clone().into(),
+        //             partitions: Some(
+        //                 all_partitions
+        //                     .iter()
+        //                     .map(|partition| OffsetFetchRequestV5_partitions {
+        //                         partition: *partition,
+        //                     })
+        //                     .collect(),
+        //             ),
+        //         }]),
+        //     };
+        //     debug!("Sending to broker {}: {:?}", leader, request);
+        //     let (request, response) =
+        //         exchange::make_exchange(&request, self.config.client_id.clone());
+        //     broker.send(request).await.map_err(KafkaError::from)?;
+        //     let response = response.await?;
+        //     event!(Level::DEBUG, ?response, "Got response from broker {:?}", leader);
+        // }
         Ok(())
     }
 }
