@@ -33,7 +33,7 @@ struct Opt {
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     tracing::subscriber::set_global_default(
         FmtSubscriber::builder()
-            .with_env_filter(EnvFilter::new("DEBUG"))
+            .with_env_filter(EnvFilter::new("TRACE"))
             .finish(),
     )
     .expect("tracing::subscriber::set_global_default");

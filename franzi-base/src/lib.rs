@@ -140,8 +140,8 @@ impl<'a, T: ToKafkaBytes> ToKafkaBytes for &'a T {
 }
 
 /// A Kafka request knows it's own api key and api version, as well its response type
-pub trait KafkaRequest: FromKafkaBytes + ToKafkaBytes {
-    type Response: FromKafkaBytes + ToKafkaBytes;
+pub trait KafkaRequest: FromKafkaBytes + ToKafkaBytes + fmt::Debug {
+    type Response: FromKafkaBytes + ToKafkaBytes + fmt::Debug;
 
     fn api_key(&self) -> i16;
 
@@ -156,6 +156,7 @@ pub enum Error {
     Protocol(i16),
     Io(io::Error),
     Utf8(std::str::Utf8Error),
+    UnknownBrokerId(i32),
 }
 
 impl From<FromBytesError> for Error {
@@ -198,6 +199,7 @@ impl fmt::Display for Error {
             Protocol(code) => write!(f, "Franzi: protocol error response {}", code),
             Io(e) => write!(f, "Franzi: io error: {}", e),
             Utf8(e) => write!(f, "Franzi: utf-8 error: {}", e),
+            UnknownBrokerId(e) => write!(f, "Franzi: Unknown broker id {}", e),
         }
     }
 }
@@ -212,6 +214,7 @@ impl std::error::Error for Error {
             Error::Protocol(_) => "Franzi: protocol error response",
             Error::Io(e) => e.description(),
             Error::Utf8(e) => e.description(),
+            Error::UnknownBrokerId(_) => "Franzi: Unknown broker id",
         }
     }
     fn cause(&self) -> Option<&dyn std::error::Error> {

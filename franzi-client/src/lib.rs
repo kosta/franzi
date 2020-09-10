@@ -6,7 +6,7 @@
 
 use bytes::{Bytes, BytesMut};
 use debug_stub_derive::DebugStub;
-use franzi_base::{types::KafkaString, Error as KafkaError};
+use franzi_base::{types::KafkaString, Error as KafkaError, KafkaRequest};
 use franzi_proto::messages::offset_fetch::OffsetFetchRequestV5;
 use franzi_proto::messages::offset_fetch::OffsetFetchRequestV5_partitions;
 use franzi_proto::messages::offset_fetch::OffsetFetchRequestV5_topics;
@@ -16,12 +16,12 @@ use franzi_proto::{
     messages::{
         find_coordinator::FindCoordinatorRequestV2,
         metadata::{MetadataRequestV7, MetadataResponseV7, MetadataResponseV7_brokers},
-    }
+    },
 };
 use futures::{channel::mpsc, SinkExt, Stream};
 use rand::seq::{IteratorRandom, SliceRandom};
 use std::{collections::BTreeMap, convert::From, fmt, fmt::Debug, io, sync::Arc};
-use tracing::{debug, event, span, Level, Span};
+use tracing::{debug, event, span, trace, Level, Span};
 use tracing_futures::Instrument;
 
 pub mod broker;
@@ -34,7 +34,27 @@ pub struct BrokerInfo {
     pub rack: Option<String>,
 }
 
-type BrokerChannel = mpsc::Sender<exchange::Exchange>;
+#[derive(Clone)]
+pub struct BrokerChannel {
+    hostname: String,
+    channel: mpsc::Sender<exchange::Exchange>,
+}
+
+impl BrokerChannel {
+    pub async fn send_one<Request: KafkaRequest>(
+        &mut self,
+        request: &Request,
+        client_id: Bytes, //TODO: Atomic?
+    ) -> Result<Request::Response, KafkaError> {
+        let broker_host = &self.hostname;
+        trace!(?broker_host, "Sending request {:?}", request);
+        let (request, response) = exchange::make_exchange(request, client_id);
+        self.channel.send(request).await.map_err(KafkaError::from)?;
+        let response = response.await;
+        trace!(?broker_host, "Received response {:?}", response);
+        response
+    }
+}
 
 #[derive(Debug, Default)]
 pub struct ClusterConfig {
@@ -196,7 +216,10 @@ impl Cluster {
                     spawn_off_broker_responses(responses, connection_span.clone());
                     let (tx, rx) = mpsc::channel::<exchange::Exchange>(0);
                     spawn_off_broker_sink(Some(sink), addr.clone(), rx, connection_span.clone());
-                    client.conns_by_host.insert(addr.to_string(), tx.clone());
+                    client.conns_by_host.insert(addr.to_string(), BrokerChannel{
+                        hostname: addr.to_string(),
+                        channel: tx.clone(),
+                    });
                     channel = Some(Ok(tx));
                     address = Some(addr.to_string());
                     break;
@@ -230,7 +253,10 @@ impl Cluster {
             .values_mut()
             .find(|info| info.host == address)
         {
-            client.conns_by_id.insert(broker.node_id, channel.clone());
+            client.conns_by_id.insert(broker.node_id, BrokerChannel{
+                hostname: address.clone(),
+                channel: channel.clone(),
+            });
         }
 
         Ok(client)
@@ -270,13 +296,13 @@ impl Cluster {
     // TODO: if that connection is down, we probably need to timeout and try other connections if possible
     // Idea: we can timeout on the `tx.send(request)` and select another (connected) broker,
     // so we can choose a smaller timeout than if we timeout on `response.await`
-    fn random_broker(&self) -> (String, BrokerChannel) {
-        let (host, conn) = self
+    fn random_broker(&self) -> BrokerChannel {
+        self
             .conns_by_host
-            .iter()
+            .values()
             .choose(&mut rand::thread_rng())
-            .expect("No connections available");
-        (host.clone(), conn.clone())
+            .expect("No connections available")
+            .clone()
     }
 
     /// Fetches metadata for the given topics using a Metadata Request V7.
@@ -285,34 +311,26 @@ impl Cluster {
         &mut self,
         topics: Option<Vec<String>>,
     ) -> Result<MetadataResponseV7, KafkaError> {
-        let (_, mut tx) = self.random_broker();
-        let (request, response) = exchange::make_exchange(
-            &MetadataRequestV7 {
+        let response = self.random_broker().send_one(&MetadataRequestV7 {
                 topics: topics.map(|xs| xs.into_iter().map(KafkaString::from).collect()),
                 allow_auto_topic_creation: false,
             },
             self.config.client_id.clone(),
-        );
-        tx.send(request).await.map_err(KafkaError::from)?;
-        let response = response.await?;
-        debug!("Got metadata_v7 response: {:?}", response);
+        ).await?;
+        // debug!("Got metadata_v7 response: {:?}", response);
         self.fill_brokers(&response.brokers)?;
         Ok(response)
     }
 
     // TODO: Naming! Conn or BrokerChannel?
-    /// Returns the BrokerChannel for that broker id. If the broker id is unknown, returns a closed channel.
-    pub fn get_conn(&mut self, id: i32) -> BrokerChannel {
+    /// Returns the BrokerChannel for that broker id.
+    pub fn get_conn(&mut self, id: i32) -> Option<BrokerChannel> {
         if let Some(conn) = self.conns_by_id.get(&id) {
-            return conn.clone();
+            return Some(conn.clone());
         }
 
         // No connection yet -> establish one!
-        let broker_info = match self.brokers.get(&id) {
-            // Unknown broker id -> return closed channel
-            None => return mpsc::channel(0).0,
-            Some(b) => b,
-        };
+        let broker_info = self.brokers.get(&id)?;
 
         let addr = &broker_info.host;
         let span = span!(Level::INFO, "connection", ?addr);
@@ -325,10 +343,14 @@ impl Cluster {
         );
         let (tx, rx) = mpsc::channel::<exchange::Exchange>(0);
         spawn_off_broker_sink(None, addr.clone(), rx, span);
-        self.conns_by_id.insert(id, tx.clone());
-        self.conns_by_host.insert(addr.clone(), tx.clone());
+        let broker_channel = BrokerChannel{
+            hostname: addr.clone(),
+            channel: tx,
+        };
+        self.conns_by_id.insert(id, broker_channel.clone());
+        self.conns_by_host.insert(addr.clone(), broker_channel.clone());
 
-        tx
+        Some(broker_channel)
     }
 
     pub async fn fetch_some(&mut self, topic: String) -> Result<(), KafkaError> {
@@ -342,9 +364,8 @@ impl Cluster {
                     continue;
                 }
                 // TODO: Can I ask ISRs as well?
-                let mut broker = self.get_conn(partition_metadata.leader);
-                let (request, response) = exchange::make_exchange(
-                    &franzi_proto::messages::fetch::FetchRequestV6 {
+                let mut broker = self.get_conn(partition_metadata.leader).ok_or(KafkaError::UnknownBrokerId(partition_metadata.leader))?;
+                let request = franzi_proto::messages::fetch::FetchRequestV6 {
                         replica_id: -1,
                         max_wait_time: 30_000, //ms
                         min_bytes: 0,
@@ -361,55 +382,51 @@ impl Cluster {
                                 },
                             ]),
                         }]),
-                    },
-                    self.config.client_id.clone(),
-                );
-                broker.send(request).await.map_err(KafkaError::from)?;
-                let response = response.await?;
-                event!(Level::DEBUG, ?response, "Got response");
+                    };
+                broker.send_one(&request, self.config.client_id.clone()).await.map_err(KafkaError::from)?;
             }
         }
         Ok(())
     }
 
-// sarama consumes like this:
-// - FindCoordinatorRequest for consumer group to any broker;
-//   -> Response contains broker; remember Broker and Coordinator
-// - JoinGroupRequest with groupID, memberID (initially empty), timeout (in seconds?), ProtocolType: "consumer"
-//   meta contains topics, UserData (from config, optional), strategy ("range" or "roundrobin")
-//   -> response contains leader_id, member_id (if identical: we are the leader), members(?)
-//      - if leader: get members as type ConsumerGroupMemberMetadata struct { Version  int16, Topics   []string, UserData []byte}
-//        then balance according to strategy
-// - SyncGroupRequest
-//   - groupID, memberID, generationID
-//   - if leader, include plan with type ConsumerGroupMemberAssignment struct { Version  int16, Topics   map[string][]int32, UserData []byte }
-//     -> response contains ConsumerGroupMemberAssignment (for this member)
-// TODO: When a non-leader joins, how does the leader balance it?
-// - for each claim:
-//   - start heartbeat loop: (every heartbeat interval)
-//     send HeartbeatRequest with groupID, memberID, generation to coordinator
-//   - send OffsetFetchRequest _for joined group_, now we have a starting offset, watermarks, ... (yay!)
-//   - start FetchRequests
+    // sarama consumes like this:
+    // - FindCoordinatorRequest for consumer group to any broker;
+    //   -> Response contains broker; remember Broker and Coordinator
+    // - JoinGroupRequest with groupID, memberID (initially empty), timeout (in seconds?), ProtocolType: "consumer"
+    //   meta contains topics, UserData (from config, optional), strategy ("range" or "roundrobin")
+    //   -> response contains leader_id, member_id (if identical: we are the leader), members(?)
+    //      - if leader: get members as type ConsumerGroupMemberMetadata struct { Version  int16, Topics   []string, UserData []byte}
+    //        then balance according to strategy
+    // - SyncGroupRequest
+    //   - groupID, memberID, generationID
+    //   - if leader, include plan with type ConsumerGroupMemberAssignment struct { Version  int16, Topics   map[string][]int32, UserData []byte }
+    //     -> response contains ConsumerGroupMemberAssignment (for this member)
+    // TODO: When a non-leader joins, how does the leader balance it?
+    // - for each claim:
+    //   - start heartbeat loop: (every heartbeat interval)
+    //     send HeartbeatRequest with groupID, memberID, generation to coordinator
+    //   - send OffsetFetchRequest _for joined group_, now we have a starting offset, watermarks, ... (yay!)
+    //   - start FetchRequests
 
-    async fn join_consumer_group(&mut self, group_id: String, topics: Vec<String>) -> Result<ConsumerGroupMembership, KafkaError> {
-        let request = FindCoordinatorRequestV2{
+    async fn join_consumer_group(
+        &mut self,
+        group_id: String,
+        topics: Vec<String>,
+    ) -> Result<ConsumerGroupMembership, KafkaError> {
+        let request = FindCoordinatorRequestV2 {
             coordinator_key: group_id.into(),
             coordinator_type: 0, // (0 = group, 1 = transaction)
         };
-        let (broker_host, mut broker_connection) = self.random_broker();
-        event!(Level::DEBUG, ?broker_host, "Sending to broker {:?}", request);
-        let (request, response) =
-            exchange::make_exchange(&request, self.config.client_id.clone());
-        broker_connection.send(request).await.map_err(KafkaError::from)?;
-        let response = response.await?;
-        event!(Level::DEBUG, ?broker_host, "Got response from broker {:?}", response);
+        let mut broker_channel = self.random_broker();
+        let response = broker_channel
+            .send_one(&request, self.config.client_id.clone())
+            .await?;
 
         if response.error_code != 0 {
             return Err(KafkaError::Protocol(response.error_code));
         }
 
         // TODO: update broker cache in case we don't know this broker?
-
 
         unimplemented!()
     }

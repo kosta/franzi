@@ -18,6 +18,9 @@ impl Exchange {
     }
 }
 
+/// make_exchange turns a serializes a kafka request into Bytes, and creates a oneshot channel
+/// to send and receive the response through. You probably dont want to use this directly, but
+/// use broker.send()
 pub fn make_exchange<Req: KafkaRequest>(
     req: &Req,
     client_id: Bytes,
