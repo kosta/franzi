@@ -15,6 +15,7 @@ use franzi_proto::{
     exchange::Exchange,
     messages::{
         find_coordinator::FindCoordinatorRequestV2,
+        join_group::{JoinGroupRequestV3, JoinGroupRequestV3_group_protocols},
         metadata::{MetadataRequestV7, MetadataResponseV7, MetadataResponseV7_brokers},
     },
 };
@@ -40,6 +41,15 @@ pub struct BrokerChannel {
     channel: mpsc::Sender<exchange::Exchange>,
 }
 
+impl Debug for BrokerChannel {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("BrokerChannel")
+            .field("hostname", &self.hostname)
+            .field("channel", if self.channel.is_closed() { &"closed" } else { &"open" })
+            .finish()
+    }
+}
+
 impl BrokerChannel {
     pub async fn send_one<Request: KafkaRequest>(
         &mut self,
@@ -47,11 +57,11 @@ impl BrokerChannel {
         client_id: Bytes, //TODO: Atomic?
     ) -> Result<Request::Response, KafkaError> {
         let broker_host = &self.hostname;
-        trace!(?broker_host, "Sending request {:?}", request);
+        event!(Level::TRACE, ?broker_host, "Sending request {:?}", request);
         let (request, response) = exchange::make_exchange(request, client_id);
         self.channel.send(request).await.map_err(KafkaError::from)?;
         let response = response.await;
-        trace!(?broker_host, "Received response {:?}", response);
+        event!(Level::TRACE, ?broker_host, "Received response {:?}", response);
         response
     }
 }
@@ -301,7 +311,9 @@ impl Cluster {
             .conns_by_host
             .values()
             .choose(&mut rand::thread_rng())
-            .expect("No connections available")
+            // Using expect because this should never happen. At the very least, the bootstrap brokers should be known
+            // TODO: Revisit when we disconnect brokers we're not interested in
+            .expect("random_broker: No broker available")
             .clone()
     }
 
@@ -414,7 +426,7 @@ impl Cluster {
         topics: Vec<String>,
     ) -> Result<ConsumerGroupMembership, KafkaError> {
         let request = FindCoordinatorRequestV2 {
-            coordinator_key: group_id.into(),
+            coordinator_key: group_id.clone().into(),
             coordinator_type: 0, // (0 = group, 1 = transaction)
         };
         let mut broker_channel = self.random_broker();
@@ -427,6 +439,28 @@ impl Cluster {
         }
 
         // TODO: update broker cache in case we don't know this broker?
+        let coordinator_id = response.coordinator.node_id;
+
+        let mut broker = self.get_conn(coordinator_id).ok_or(KafkaError::UnknownBrokerId(coordinator_id))?;
+        let request = JoinGroupRequestV3 {
+            group_id: group_id.into(),
+            // TODO: Move both timeouts to config
+            session_timeout: std::time::Duration::from_secs(10).as_millis() as i32,
+            rebalance_timeout: std::time::Duration::from_secs(60).as_millis() as i32,
+            member_id: "".into(),
+            protocol_type: "consumer".into(),
+            group_protocols: Some(vec![
+                JoinGroupRequestV3_group_protocols{
+                    protocol_name: "range".into(),
+                    protocol_metadata: Default::default(),
+                },
+                JoinGroupRequestV3_group_protocols{
+                    protocol_name: "roundrobin".into(),
+                    protocol_metadata: Default::default(),
+                },
+            ]),
+        };
+        let response = broker.send_one(&request, self.config.client_id.clone()).await?;
 
         unimplemented!()
     }
