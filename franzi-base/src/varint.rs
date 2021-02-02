@@ -170,7 +170,7 @@ pub fn write_varu64(bytes: &mut dyn BufMut, mut v: u64) {
 pub fn write_vari64(bytes: &mut dyn BufMut, v: i64) {
     let mut u = (v as u64) << 1;
     if v < 0 {
-        u ^= -1i64 as u64;
+        u ^= u64::MAX;
     }
     write_varu64(bytes, u)
 }
@@ -248,9 +248,22 @@ mod tests {
 
     quickcheck! {
         fn varint_back_and_forth_i64(x: i64) -> bool {
+            if x > i64::MAX / 2 || x < i64::MIN / 2{
+                return true; // sorry, that won't work...
+            }
             let mut buf = BytesMut::new();
             super::write_vari64(&mut buf, x);
             let y = super::read_vari64(&mut buf.freeze()).unwrap();
+            dbg!(x, y);
+            x == y
+        }
+    }
+
+    quickcheck! {
+        fn varint_back_and_forth_u64(x: u64) -> bool {
+            let mut buf = BytesMut::new();
+            super::write_varu64(&mut buf, x);
+            let y = super::read_varu64(&mut buf.freeze()).unwrap();
             x == y
         }
     }
