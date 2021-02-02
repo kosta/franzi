@@ -7,16 +7,16 @@ edition = "2018"
 [dependencies]
 franzi-base = { path = "../franzi-base" }
 franzi-macros = { path = "../franzi-macros" }
-tokio = "0.2.0"
+tokio = "1"
 futures = "0.3"
-bytes = "0.5"
-tracing = "0.1.9"
+bytes = "1"
+tracing = "0.1"
 
 # For Compression
-flate2 = "1.0.12"
-snap = "1.0.1"
-lz4 = "1.23.1"
-zstd = "0.5.0"
+flate2 = "1"
+snap = "1"
+lz4 = "1"
+zstd = "0.6"
 
 [dev-dependencies]
-lazy_static = "1.4.0"
+lazy_static = "1"
