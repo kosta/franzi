@@ -5,9 +5,9 @@ authors = ["Kosta Welke <kw@trinatives.com>"]
 edition = "2018"
 
 [dependencies]
-bytes = "0.5"
+bytes = "1"
 futures = "0.3"
-snap = "1.0.1"
+snap = "1"
 
 [dev-dependencies]
-quickcheck = "0.9"
+quickcheck = "1"

@@ -181,7 +181,7 @@ fn spawn_off_broker_sink(
                             event!(Level::DEBUG, ?e, "Error reconnecting...");
                             // TODO: Configurable exponential backoff
                             let amount = std::time::Duration::from_secs(30);
-                            tokio::time::delay_for(amount).await
+                            tokio::time::sleep(amount).await
                         }
                     }
                 }

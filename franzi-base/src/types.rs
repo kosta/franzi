@@ -261,7 +261,7 @@ impl FromKafkaBytes for Option<KafkaString> {
 
         let mut s = BytesMut::with_capacity(len);
         while len > 0 {
-            let slice = bytes.bytes();
+            let slice = bytes.as_ref();
             let slice_len = slice.len();
             if slice_len >= len {
                 s.put(&slice[..len]);
