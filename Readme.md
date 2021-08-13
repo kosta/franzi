@@ -52,7 +52,6 @@ There is some stuff that I probably won't come around to implement, as I won't p
 forseeable futures:
 
 * Transactional consumer/producer ("stream")
-* Group-Offset-Commit coordination
 * ...?
 
 ## Etymology
